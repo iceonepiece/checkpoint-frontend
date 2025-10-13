@@ -38,18 +38,14 @@ import TopNav from "@/components/TopNav";
 import Sidebar from "@/components/Sidebar";
 
 export const metadata = {
-  title: "Check Point",
-  description: "Git for artists — thumbnail-first asset repos",
+  title: "CheckPoint",
+  description: "Git for art creator",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
-      <body className="min-h-screen bg-gray-50 text-gray-900">
+      <body className="min-h-screen bg-[#0d1117] text-gray-100">
         <TopNav />
         <div className="mx-auto max-w-screen-2xl px-4">
           <div className="flex gap-6 py-6">

@@ -103,17 +103,17 @@
 // }
 
 import FileGrid from "@/components/FileGrid";
+import FileBrowser from "@/components/FileBrowser";
 
 export default function Page() {
   return (
     <section className="space-y-6">
-      {/* Repo header placeholder */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      {/* <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">vibhumi / concept-art-repo</h1>
+            <h1 className="text-xl font-semibold">Example-User / Example_Repository</h1>
             <p className="text-sm text-gray-600">
-              A sample repository for thumbnails-first asset browsing.
+              Thumbnail-first repository for art assets.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -125,10 +125,10 @@ export default function Page() {
             </button>
           </div>
         </div>
-      </div>
+      </div> */}
 
-      {/* File grid (thumbnails) */}
-      <FileGrid />
+      {/* Drive-like browser with grid/list toggle */}
+      <FileBrowser />
     </section>
   );
 }
