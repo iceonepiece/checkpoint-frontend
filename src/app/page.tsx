@@ -102,7 +102,6 @@
 //   );
 // }
 
-import FileGrid from "@/components/FileGrid";
 import FileBrowser from "@/components/FileBrowser";
 
 export default function Page() {

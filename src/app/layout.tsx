@@ -35,7 +35,6 @@ import "./globals.css";
 
 import "./globals.css";
 import TopNav from "@/components/TopNav";
-import Sidebar from "@/components/Sidebar";
 
 export const metadata = {
   title: "CheckPoint",

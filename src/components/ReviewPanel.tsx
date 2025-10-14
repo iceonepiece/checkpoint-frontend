@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Card, SectionTitle } from "./ui";
 
+type ReviewState = "Needs changes" | "Pending" | "Approved";
+
 type ReviewProps = {
-  initialStatus: "Needs changes" | "Pending" | "Approved";
+  initialStatus: ReviewState;
 };
 
 export default function ReviewPanel({ initialStatus }: ReviewProps) {
@@ -23,7 +25,7 @@ export default function ReviewPanel({ initialStatus }: ReviewProps) {
         <select
           className="w-full rounded-md border border-[#30363d] bg-[#0d1117] px-2 py-1.5 text-sm text-gray-200"
           value={status}
-          onChange={(e) => setStatus(e.target.value as any)}
+          onChange={(e) => setStatus(e.target.value as ReviewState)}
         >
           <option>Needs changes</option>
           <option>Pending</option>
