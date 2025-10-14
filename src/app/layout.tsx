@@ -49,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <TopNav />
         <div className="mx-auto max-w-screen-2xl px-4">
           <div className="flex gap-6 py-6">
-            <Sidebar />
+            {/*<Sidebar />*/}
             <main className="min-w-0 flex-1">{children}</main>
           </div>
         </div>

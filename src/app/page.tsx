@@ -108,24 +108,6 @@ import FileBrowser from "@/components/FileBrowser";
 export default function Page() {
   return (
     <section className="space-y-6">
-      {/* <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold">Example-User / Example_Repository</h1>
-            <p className="text-sm text-gray-600">
-              Thumbnail-first repository for art assets.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="rounded-md border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50">
-              Upload
-            </button>
-            <button className="rounded-md border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50">
-              New folder
-            </button>
-          </div>
-        </div>
-      </div> */}
 
       {/* Drive-like browser with grid/list toggle */}
       <FileBrowser />
