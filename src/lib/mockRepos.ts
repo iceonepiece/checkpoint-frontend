@@ -2,9 +2,11 @@ export type Repo = {
   id: string;
   owner: string;
   name: string;
-  fullName: string;      // owner/name
+  // owner/name
+  fullName: string;      
   private?: boolean;
-  avatarUrl?: string;    // org/user avatar
+  // org/user avatar
+  avatarUrl?: string;    
 };
 
 export const MOCK_REPOS: Repo[] = [
