@@ -1,10 +1,28 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 function Icon(props: React.SVGProps<SVGSVGElement>) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props} />;
 }
 
 export default function TopNav() {
+  const pathname = usePathname();
+
+  const tabs = [
+    { label: "Overview", href: "/overview" },
+    { label: "Repository", href: "/" },
+    { label: "Issues", href: "/issues" },
+    { label: "Pull Requests", href: "/pulls" },
+    { label: "Settings", href: "/settings" },
+  ];
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur">
       <div className="mx-auto max-w-screen-2xl h-14 px-3 sm:px-4 flex items-center gap-2 text-gray-200">
@@ -70,6 +88,25 @@ export default function TopNav() {
           </button>
           <div className="ml-1 size-8 rounded-full bg-green-400/90 ring-2 ring-[#0d1117]" title="Profile" />
         </div>
+      </div>
+      {/* Tabs row (inside the same header; no divider line) */}
+      <div className="mx-auto flex max-w-screen-2xl items-center gap-2 px-4 text-sm">
+        {tabs.map((tab) => {
+          const active = isActive(tab.href);
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`relative px-3 py-2 font-medium ${
+                active
+                  ? "text-white after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:rounded-full after:bg-[#f78166]"
+                  : "text-gray-400 hover:text-gray-200"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
       </div>
     </header>
   );
