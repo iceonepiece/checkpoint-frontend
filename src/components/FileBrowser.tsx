@@ -37,6 +37,7 @@ const MOCK_FILES: FileItem[] = [
 type ViewMode = "grid" | "list";
 type SortKey = "name" | "type" | "modified" | "size";
 type SortDir = "asc" | "desc";
+type Density = "compact"|"cozy"|"comfortable";
 
 /* ---------- Small utilities ---------- */
 
@@ -76,7 +77,7 @@ function Kebab() {
 function DriveCard({
   file, selected, onToggle, size
 }: {
-  file: FileItem; selected: boolean; onToggle: () => void; size: "compact"|"cozy"|"comfortable";
+  file: FileItem; selected: boolean; onToggle: () => void; size: Density;
 }) {
   const badge = mimeBadge(file.type);
   const aspectClass = size === "comfortable" ? "aspect-[4/3]" : "aspect-video";
@@ -203,7 +204,7 @@ export default function FileBrowser() {
   const [view, setView] = useState<ViewMode>("grid");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [density, setDensity] = useState<"compact"|"cozy"|"comfortable">("cozy");
+  const [density, setDensity] = useState<Density>("cozy");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   const path = [
@@ -281,7 +282,7 @@ export default function FileBrowser() {
             <span className="text-gray-400">Density:</span>
             <select
               value={density}
-              onChange={(e) => setDensity(e.target.value as any)}
+              onChange={(e) => setDensity(e.target.value as Density)}
               className="bg-transparent outline-none"
             >
               <option value="compact">Compact</option>
