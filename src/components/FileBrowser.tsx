@@ -30,6 +30,8 @@ const MOCK_FILES: FileItem[] = [
   { id: "p1", name: "ExampleFinal.pdf", type: "application/pdf", sizeBytes: 1200000, modifiedAt: "2024-03-03" },
   { id: "d1", name: "brief.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", sizeBytes: 214000, modifiedAt: "2024-05-09" },
   { id: "s1", name: "ui_icons.svg", type: "image/svg+xml", sizeBytes: 95000, modifiedAt: "2024-12-21" },
+  { id: "v2", name: "turntable.mp4", type: "video/mp4", sizeBytes: 34600000, modifiedAt: "2024-06-12" },
+  { id: "p2", name: "ExampleFinal.pdf", type: "application/pdf", sizeBytes: 1200000, modifiedAt: "2024-03-03" },
 ];
 
 type ViewMode = "grid" | "list";
@@ -238,7 +240,7 @@ export default function FileBrowser() {
     : "sm:grid-cols-2 lg:grid-cols-4";
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 px-6">
       {/* Breadcrumbs */}
       <div className="flex items-center justify-between">
         <Breadcrumbs items={path} />

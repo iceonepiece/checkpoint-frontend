@@ -107,10 +107,8 @@ import FileBrowser from "@/components/FileBrowser";
 
 export default function Page() {
   return (
-    <section className="space-y-6">
-
-      {/* Drive-like browser with grid/list toggle */}
-      <FileBrowser />
+    <section className="space-y-6 py-6">
+      <FileBrowser/>
     </section>
   );
 }

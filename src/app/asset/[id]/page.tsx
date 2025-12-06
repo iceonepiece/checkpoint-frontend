@@ -10,7 +10,7 @@ export default function AssetPage({ params }: Params) {
   const asset = MOCK_ASSETS[params.id] ?? Object.values(MOCK_ASSETS)[0];
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 px-6 py-6">
       {/* Header */}
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -75,6 +75,7 @@ export default function AssetPage({ params }: Params) {
                     <div className="flex items-center gap-2 text-gray-400">
                       <span>{new Date(v.date).toLocaleDateString()}</span>
                       <Link href={`/compare/${asset.id}/${v.id}`} className="rounded-md px-2 py-1 hover:bg-white/5">Compare</Link>
+                      <Link href="#" className="rounded-md px-2 py-1 hover:bg-white/5">Rollback</Link>
                       <Link href="#" className="rounded-md px-2 py-1 hover:bg-white/5">Download</Link>
                     </div>
                   </li>
