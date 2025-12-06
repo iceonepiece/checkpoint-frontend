@@ -28,6 +28,11 @@ const INITIAL_FILES: FileItem[] = [
   { id: "p1", name: "ExampleFinal.pdf", type: "application/pdf", sizeBytes: 1200000, modifiedAt: "2024-03-03" },
   { id: "d1", name: "brief.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", sizeBytes: 214000, modifiedAt: "2024-05-09" },
   { id: "s1", name: "ui_icons.svg", type: "image/svg+xml", sizeBytes: 95000, modifiedAt: "2024-12-21" },
+  
+  { id: "v2", name: "turntable.mp4", type: "video/mp4", sizeBytes: 34600000, modifiedAt: "2024-06-12" },
+  { id: "p2", name: "ExampleFinal.pdf", type: "application/pdf", sizeBytes: 1200000, modifiedAt: "2024-03-03" },
+  { id: "d2", name: "brief.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", sizeBytes: 214000, modifiedAt: "2024-05-09" },
+  { id: "s2", name: "ui_icons.svg", type: "image/svg+xml", sizeBytes: 95000, modifiedAt: "2024-12-21" },
 ];
 
 type ViewMode = "grid" | "list";
@@ -249,7 +254,7 @@ export default function FileBrowser() {
            </div>
            <Button variant="primary">
              <Icon className="size-4 mr-2"><path d="M12 5v14M5 12h14" /></Icon>
-             New
+             Upload
            </Button>
         </div>
       </div>

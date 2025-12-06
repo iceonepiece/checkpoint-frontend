@@ -13,8 +13,6 @@ export default function TopNav() {
     { label: "Overview", href: "/overview" },
     { label: "Repository", href: "/" },
     { label: "Issues", href: "/issues" },
-    { label: "Pull Requests", href: "/pulls" },
-    { label: "Settings", href: "/settings" },
   ];
 
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -32,14 +30,8 @@ export default function TopNav() {
           <span className="ml-2 rounded-full border border-default px-2 py-0.5 text-xs text-gray-400">Public</span>
         </div>
 
-        {/* Search */}
-        <div className="flex-1 max-w-md mx-4">
-          <div className="relative group">
-            <input type="text" placeholder="Type / to search" className="w-full rounded-md bg-[#0d1117] border border-default px-3 py-1.5 pl-9 text-sm text-gray-200 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
-            <Icon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-gray-500 group-focus-within:text-blue-400"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></Icon>
-            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:block rounded border border-gray-700 bg-gray-800 px-1.5 text-[10px] text-gray-400">/</kbd>
-          </div>
-        </div>
+        {/* Search Removed from here */}
+        <div className="flex-1" /> 
 
         {/* Right Actions */}
         <div className="ml-auto flex items-center gap-2">

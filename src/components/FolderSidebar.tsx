@@ -1,16 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { TreeNode } from "@/lib/mockFolderTree";
 import { MOCK_TREE } from "@/lib/mockFolderTree";
 
-// ... [Keep Caret, FolderIcon, TreeItem components as is, they are fine logic-wise] ...
-// I will just show the main exported component with updated styles:
+// 1. Define the generic Icon component
+function Icon(props: React.SVGProps<SVGSVGElement>) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props} />;
+}
 
-// (Assuming Caret/FolderIcon/TreeItem are defined above exactly as before)
-// Re-paste helper components if you deleted them, or just update the Sidebar below:
-
+// 2. Keep existing helpers
 function Caret({ open }: { open: boolean }) {
   return <svg className={`h-3 w-3 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>;
 }
@@ -74,8 +74,17 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
   return (
     <aside className="hidden w-72 shrink-0 flex-col border-r border-default bg-[#0d1117] md:flex">
       <div className="p-4 border-b border-default mb-2">
-        <div className="text-sm font-semibold text-gray-200">Files</div>
+        <div className="flex items-center justify-between">
+           <div className="text-sm font-semibold text-gray-200">Directories</div>
+        </div>
+        
+        {/* Search Bar */}
+        <div className="mt-3 relative group">
+            <input type="text" placeholder="Search for files..." className="w-full rounded-md bg-[#161b22] border border-[#30363d] px-3 py-1.5 pl-8 text-xs text-gray-200 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder-gray-500" />
+            <Icon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-500 group-focus-within:text-blue-400"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></Icon>
+        </div>
       </div>
+      
       <div className="flex-1 overflow-y-auto px-2">
         {tree.map((n) => (
           <TreeItem key={n.id} node={n} depth={0} expanded={expanded} toggle={toggle} selectedId={selectedId} onSelect={onSelect} parentPath="" />
