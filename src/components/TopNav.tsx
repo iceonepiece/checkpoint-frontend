@@ -9,7 +9,6 @@ function Icon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function TopNav() {
   const pathname = usePathname();
-
   const tabs = [
     { label: "Overview", href: "/overview" },
     { label: "Repository", href: "/" },
@@ -18,95 +17,44 @@ export default function TopNav() {
     { label: "Settings", href: "/settings" },
   ];
 
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
-  };
+  const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur">
-      <div className="mx-auto max-w-screen-2xl h-14 px-3 sm:px-4 flex items-center gap-2 text-gray-200">
-        {/* Left: hamburger + logo + path */}
-        <button
-          className="hidden sm:grid place-items-center size-8 rounded-md text-gray-300 hover:bg-white/5"
-          aria-label="Toggle sidebar"
-          title="Toggle sidebar"
-        >
-          <Icon className="size-5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </Icon>
-        </button>
+    <header className="sticky top-0 z-50 border-b border-default bg-[#0d1117]/95 backdrop-blur">
+      <div className="mx-auto max-w-screen-2xl h-14 px-4 flex items-center gap-4 text-gray-200">
+        <button className="sm:hidden text-gray-400"><Icon className="size-6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h16" /></Icon></button>
 
-        <Link href="/" className="grid place-items-center size-8 rounded-md hover:bg-white/5">
-          <Icon className="size-5" viewBox="0 0 16 16" stroke="none" fill="currentColor">
-            <path d="" />
-          </Icon>
-        </Link>
-
-        <nav className="hidden md:flex items-center gap-1 text-sm text-gray-300">
+        <div className="hidden md:flex items-center gap-2 text-sm text-gray-300">
+          <div className="size-6 bg-gray-700 rounded-full" />
           <span className="opacity-70">Example-User</span>
           <span className="opacity-50">/</span>
-          <Link href="#" className="font-medium hover:text-white">Example-Repository</Link>
-          <span className="ml-2 rounded-full border border-[#30363d] px-1.5 py-0.5 text-[11px] leading-none text-gray-400">
-            Public
-          </span>
-        </nav>
+          <Link href="#" className="font-semibold text-white hover:underline">Checkpoint-Project</Link>
+          <span className="ml-2 rounded-full border border-default px-2 py-0.5 text-xs text-gray-400">Public</span>
+        </div>
 
         {/* Search */}
-        <div className="flex-1 flex justify-center md:justify-start">
-          <div className="w-full md:max-w-md">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Type / to search"
-                className="w-full rounded-md bg-[#0d1117] border border-[#30363d] px-3 py-1.5 pl-9 text-sm text-gray-200 placeholder-gray-500 outline-none focus:ring-2 focus:ring-white/10"
-              />
-              <Icon className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-gray-500">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" />
-              </Icon>
-              <kbd className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:block rounded border border-[#30363d] bg-[#0d1117] px-1.5 py-0.5 text-[10px] text-gray-400">
-                /
-              </kbd>
-            </div>
+        <div className="flex-1 max-w-md mx-4">
+          <div className="relative group">
+            <input type="text" placeholder="Type / to search" className="w-full rounded-md bg-[#0d1117] border border-default px-3 py-1.5 pl-9 text-sm text-gray-200 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+            <Icon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-gray-500 group-focus-within:text-blue-400"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></Icon>
+            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:block rounded border border-gray-700 bg-gray-800 px-1.5 text-[10px] text-gray-400">/</kbd>
           </div>
         </div>
 
-        {/* Right controls */}
-        <div className="ml-auto flex items-center gap-1">
-          <button className="grid place-items-center size-8 rounded-md text-gray-300 hover:bg-white/5" title="Issues">
-            <Icon className="size-5"><path d="M12 8v4M12 16h.01" /><circle cx="12" cy="12" r="9" /></Icon>
-          </button>
-          <button className="grid place-items-center size-8 rounded-md text-gray-300 hover:bg-white/5" title="Pull requests">
-            <Icon className="size-5"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="18" r="2" /><path d="M8 8v8a4 4 0 0 0 4 4h2" /></Icon>
-          </button>
-          <button className="grid place-items-center size-8 rounded-md text-gray-300 hover:bg-white/5" title="Notifications">
-            <Icon className="size-5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 1 0-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></Icon>
-          </button>
-          <button className="grid place-items-center size-8 rounded-md text-gray-300 hover:bg-white/5" title="Create new">
-            <Icon className="size-5"><path d="M12 5v14M5 12h14" /></Icon>
-          </button>
-          <div className="ml-1 size-8 rounded-full bg-green-400/90 ring-2 ring-[#0d1117]" title="Profile" />
+        {/* Right Actions */}
+        <div className="ml-auto flex items-center gap-2">
+           <button className="p-2 text-gray-400 hover:text-white"><Icon className="size-5"><path d="M12 5v14M5 12h14" /></Icon></button>
+           <div className="size-8 rounded-full bg-green-600 border border-default" />
         </div>
       </div>
-      {/* Tabs row (inside the same header; no divider line) */}
-      <div className="mx-auto flex max-w-screen-2xl items-center gap-2 px-4 text-sm">
-        {tabs.map((tab) => {
-          const active = isActive(tab.href);
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`relative px-3 py-2 font-medium ${
-                active
-                  ? "text-white after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:rounded-full after:bg-[#f78166]"
-                  : "text-gray-400 hover:text-gray-200"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
+      
+      {/* Tabs */}
+      <div className="mx-auto max-w-screen-2xl px-4 flex gap-1 overflow-x-auto">
+        {tabs.map((tab) => (
+           <Link key={tab.href} href={tab.href} className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${isActive(tab.href) ? "border-[#f78166] text-white" : "border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-700"}`}>
+             {tab.label}
+           </Link>
+        ))}
       </div>
     </header>
   );
