@@ -3,22 +3,24 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import FileBrowser from "@/components/FileBrowser";
+import FolderSidebar from "@/components/FolderSidebar"; // Import Sidebar here
 
 export default function Page() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in.
     const isLoggedIn = localStorage.getItem("isLoggedIn");
-    
     if (!isLoggedIn) {
       router.push("/login");
     }
   }, [router]);
 
   return (
-    <section className="h-full flex flex-col">
-      <FileBrowser />
-    </section>
+    <div className="flex h-full">
+      <FolderSidebar />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <FileBrowser />
+      </div>
+    </div>
   );
 }

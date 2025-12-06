@@ -9,33 +9,74 @@ export const MOCK_TREE: TreeNode[] = [
     id: "assets",
     name: "Assets",
     children: [
-      { id: "anim", name: "Animation" },
-      { id: "sprite", name: "Sprite" },
-      { id: "mat", name: "Material" },
-      { id: "mesh", name: "Meshes", 
+      { 
+        id: "chars", 
+        name: "Characters",
         children: [
-          { id: "char", name: "Character" },
-          { id: "env", name: "Environment" },
-          { id: "env1", name: "Environment" },
-          { id: "env2", name: "Environment" },
-          { id: "env3", name: "Environment" },
-          { id: "env4", name: "Environment" },
-          { id: "env5", name: "Environment" },
-          { id: "env6", name: "Environment" },
-          { id: "env7", name: "Environment" },
-          { id: "env8", name: "Environment" },
-          { id: "env9", name: "Environment" },
-          { id: "env10", name: "Environment" },
-          { id: "env11", name: "Environment" },
-          { id: "env12", name: "Environment" },
-          { id: "env13", name: "Environment" },
-          { id: "env14", name: "Environment" },
-          { id: "env15", name: "Environment" },
-          { id: "env16", name: "Environment" },
-          { id: "env17", name: "Environment" },
-          { id: "env18", name: "Environment" },
+           { id: "player", name: "Player_Hero" },
+           { id: "enemies", name: "Enemies", children: [
+               { id: "bosses", name: "Bosses" },
+               { id: "mobs", name: "Basic_Mobs" }
+           ]},
+           { id: "npcs", name: "NPCs" }
         ]
       },
+      { 
+        id: "env", 
+        name: "Environments",
+        children: [
+           { id: "forest", name: "Forest_Biome", children: [
+               { id: "trees", name: "Trees" },
+               { id: "rocks", name: "Rocks" },
+               { id: "foliage", name: "Foliage" }
+           ]},
+           { id: "dungeon", name: "Dungeon_Keep" },
+           { id: "village", name: "Village_Hub" }
+        ]
+      },
+      { 
+        id: "props", 
+        name: "Props",
+        children: [
+           { id: "weapons", name: "Weapons" },
+           { id: "items", name: "Consumables" },
+           { id: "furniture", name: "Furniture" }
+        ]
+      },
+      { 
+        id: "ui", 
+        name: "UI",
+        children: [
+           { id: "icons", name: "Icons" },
+           { id: "hud", name: "HUD_Elements" },
+           { id: "menus", name: "Menu_Screens" }
+        ]
+      },
+      {
+        id: "vfx",
+        name: "VFX",
+        children: [
+           { id: "particles", name: "Particles" },
+           { id: "shaders", name: "Shaders" }
+        ]
+      },
+      {
+        id: "audio",
+        name: "Audio",
+        children: [
+           { id: "sfx", name: "SFX" },
+           { id: "music", name: "Music_Tracks" },
+           { id: "vo", name: "Voice_Overs" }
+        ]
+      }
     ],
   },
+  {
+      id: "settings",
+      name: "ProjectSettings",
+      children: [
+          { id: "input", name: "InputManager" },
+          { id: "tags", name: "TagsAndLayers" }
+      ]
+  }
 ];

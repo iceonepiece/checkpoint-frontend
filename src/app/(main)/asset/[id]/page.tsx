@@ -21,7 +21,7 @@ export default function AssetPage(props: Params) {
   const [targetVersion, setTargetVersion] = useState(asset.versions[1]?.id || "v1");
 
   return (
-    <section className="space-y-6 px-6 py-6 h-full flex flex-col min-h-0">
+    <section className="space-y-6 px-6 py-6 h-full flex flex-col min-h-0 w-full max-w-screen-xl mx-auto">
       {/* Header */}
       <Card className="p-4 shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-3">

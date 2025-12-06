@@ -5,12 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { TreeNode } from "@/lib/mockFolderTree";
 import { MOCK_TREE } from "@/lib/mockFolderTree";
 
-// 1. Define the generic Icon component
 function Icon(props: React.SVGProps<SVGSVGElement>) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props} />;
 }
 
-// 2. Keep existing helpers
 function Caret({ open }: { open: boolean }) {
   return <svg className={`h-3 w-3 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>;
 }
@@ -40,9 +38,13 @@ function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentP
       <button
         onClick={() => (isFolder ? toggle(node.id) : onSelect(node, fullPath))}
         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${selected ? "bg-[#1c2128] text-white font-medium" : "text-gray-400 hover:bg-[#1c2128] hover:text-gray-200"}`}
-        style={{ paddingLeft: 8 + depth * 12 }}
+        style={{ paddingLeft: 12 + depth * 20 }}
       >
-        <span className="text-gray-500">{isFolder ? <Caret open={open} /> : <span className="w-3" />}</span>
+        {/* Fixed: Use a flex container for the Caret/Spacer to ensure consistent width */}
+        <span className="flex size-3 shrink-0 items-center justify-center text-gray-500">
+            {isFolder ? <Caret open={open} /> : <div className="size-3" />}
+        </span>
+        
         <FolderIcon open={open} />
         <span className="truncate">{node.name}</span>
       </button>
@@ -78,9 +80,8 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
            <div className="text-sm font-semibold text-gray-200">Directories</div>
         </div>
         
-        {/* Search Bar */}
         <div className="mt-3 relative group">
-            <input type="text" placeholder="Search for files..." className="w-full rounded-md bg-[#161b22] border border-[#30363d] px-3 py-1.5 pl-8 text-xs text-gray-200 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder-gray-500" />
+            <input type="text" placeholder="Filter folders..." className="w-full rounded-md bg-[#161b22] border border-[#30363d] px-3 py-1.5 pl-8 text-xs text-gray-200 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder-gray-500" />
             <Icon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-500 group-focus-within:text-blue-400"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></Icon>
         </div>
       </div>

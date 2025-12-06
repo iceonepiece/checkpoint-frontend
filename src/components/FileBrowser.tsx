@@ -4,37 +4,9 @@ import Link from "next/link";
 import React, { useMemo, useState } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { Button, Card } from "@/components/ui";
+import { MOCK_FILES, type FileItem } from "@/lib/mockFiles"; // Import new data
 
-/* ---------- Types & Mock Data ---------- */
-
-type FileItem = {
-  id: string;
-  name: string;
-  type: string;      
-  sizeBytes: number; 
-  modifiedAt: string;
-  thumb?: string;    
-  isFolder?: boolean;
-  lockedBy?: string; // New field
-};
-
-// Added 'lockedBy' to one example for demonstration
-const INITIAL_FILES: FileItem[] = [
-  { id: "f1", name: "Pre-Alpha", type: "folder", sizeBytes: 0, modifiedAt: "2024-07-02", isFolder: true },
-  { id: "f2", name: "UIs", type: "folder", sizeBytes: 0, modifiedAt: "2023-11-04", isFolder: true },
-  { id: "i1", name: "mech_concept.jpg", type: "image/jpeg", sizeBytes: 1780000, modifiedAt: "2025-01-15", thumb: "/samples/a.jpg" },
-  { id: "i2", name: "forest_scene.png", type: "image/png", sizeBytes: 2100000, modifiedAt: "2025-01-03", thumb: "/samples/b.jpg", lockedBy: "Jane Doe" },
-  { id: "v1", name: "turntable.mp4", type: "video/mp4", sizeBytes: 34600000, modifiedAt: "2024-06-12" },
-  { id: "p1", name: "ExampleFinal.pdf", type: "application/pdf", sizeBytes: 1200000, modifiedAt: "2024-03-03" },
-  { id: "d1", name: "brief.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", sizeBytes: 214000, modifiedAt: "2024-05-09" },
-  { id: "s1", name: "ui_icons.svg", type: "image/svg+xml", sizeBytes: 95000, modifiedAt: "2024-12-21" },
-  
-  { id: "v2", name: "turntable.mp4", type: "video/mp4", sizeBytes: 34600000, modifiedAt: "2024-06-12" },
-  { id: "p2", name: "ExampleFinal.pdf", type: "application/pdf", sizeBytes: 1200000, modifiedAt: "2024-03-03" },
-  { id: "d2", name: "brief.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", sizeBytes: 214000, modifiedAt: "2024-05-09" },
-  { id: "s2", name: "ui_icons.svg", type: "image/svg+xml", sizeBytes: 95000, modifiedAt: "2024-12-21" },
-];
-
+/* ---------- Types & Data ---------- */
 type ViewMode = "grid" | "list";
 type Density = "compact" | "cozy" | "comfortable";
 
@@ -53,6 +25,7 @@ function mimeBadge(type: string) {
   if (type.startsWith("image/")) return { label: "Image", dot: "bg-blue-500" };
   if (type.startsWith("video/")) return { label: "Video", dot: "bg-purple-500" };
   if (type.includes("pdf")) return { label: "PDF", dot: "bg-red-500" };
+  if (type.includes("model") || type.includes("fbx")) return { label: "Model", dot: "bg-orange-500" };
   return { label: "File", dot: "bg-gray-400" };
 }
 
@@ -218,7 +191,7 @@ function SelectionBar({ count, onLock, clear }: { count: number; onLock: () => v
 
 export default function FileBrowser() {
   const [view, setView] = useState<ViewMode>("grid");
-  const [files, setFiles] = useState<FileItem[]>(INITIAL_FILES);
+  const [files, setFiles] = useState<FileItem[]>(MOCK_FILES);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   const toggleOne = (id: string) => setSelected((s) => ({ ...s, [id]: !s[id] }));
