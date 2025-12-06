@@ -22,7 +22,8 @@ export default function ActivityHeatmap({ data }: { data: ContributionDay[] }) {
       case 2: return "bg-[#006d32]";
       case 3: return "bg-[#26a641]";
       case 4: return "bg-[#39d353]"; 
-      default: return "bg-[#161b22]"; 
+      // Refactored: bg-card
+      default: return "bg-card"; 
     }
   };
 
@@ -32,6 +33,7 @@ export default function ActivityHeatmap({ data }: { data: ContributionDay[] }) {
   }
 
   return (
+    // Refactored: border-default
     <Card className="p-4 border-default">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-200">Contribution Activity</h3>
@@ -55,7 +57,8 @@ export default function ActivityHeatmap({ data }: { data: ContributionDay[] }) {
       <div className="mt-2 flex items-center justify-end gap-2 text-xs text-gray-400">
         <span>Less</span>
         <div className="flex gap-1">
-            <div className="size-3 rounded-sm bg-[#161b22] border border-white/5" />
+            {/* Refactored: bg-card */}
+            <div className="size-3 rounded-sm bg-card border border-white/5" />
             <div className="size-3 rounded-sm bg-[#0e4429]" />
             <div className="size-3 rounded-sm bg-[#006d32]" />
             <div className="size-3 rounded-sm bg-[#26a641]" />

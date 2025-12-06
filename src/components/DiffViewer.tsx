@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-//import { Icon } from "./FileBrowser";
+import { useState, useRef } from "react";
 
 function DragHandle() {
   return (
@@ -28,14 +27,15 @@ export default function DiffViewer({ before, after, type }: Props) {
 
   const isImage = type.startsWith("image/");
 
-  // If not an image, fall back to simple side-by-side
   if (!isImage) {
     return (
       <div className="grid grid-cols-2 gap-4 h-full">
-        <div className="bg-[#0d1117] p-4 rounded border border-red-900/30 flex items-center justify-center text-red-400">
+        {/* Refactored: bg-background */}
+        <div className="bg-background p-4 rounded border border-red-900/30 flex items-center justify-center text-red-400">
            Old Version (Non-visual diff)
         </div>
-        <div className="bg-[#0d1117] p-4 rounded border border-green-900/30 flex items-center justify-center text-green-400">
+        {/* Refactored: bg-background */}
+        <div className="bg-background p-4 rounded border border-green-900/30 flex items-center justify-center text-green-400">
            New Version
         </div>
       </div>
@@ -51,20 +51,19 @@ export default function DiffViewer({ before, after, type }: Props) {
   };
 
   return (
+    // Refactored: bg-background
     <div 
       ref={containerRef}
-      className="relative w-full aspect-[16/10] overflow-hidden rounded-md bg-[#0d1117] select-none touch-none cursor-ew-resize group"
+      className="relative w-full aspect-[16/10] overflow-hidden rounded-md bg-background select-none touch-none cursor-ew-resize group"
       onMouseMove={(e) => e.buttons === 1 && handleDrag(e)}
       onTouchMove={handleDrag}
       onClick={handleDrag}
     >
-      {/* Background (New) */}
       <img src={after} alt="New" className="absolute inset-0 size-full object-contain" />
       <div className="absolute top-2 right-2 bg-green-600/90 text-white text-xs px-2 py-1 rounded shadow-sm z-10">
         New (Head)
       </div>
 
-      {/* Foreground (Old) - Clipped */}
       <div 
         className="absolute inset-0 overflow-hidden border-r border-white/20"
         style={{ width: `${sliderPos}%` }}
@@ -75,7 +74,6 @@ export default function DiffViewer({ before, after, type }: Props) {
         </div>
       </div>
 
-      {/* Slider Handle */}
       <div 
         className="absolute inset-y-0"
         style={{ left: `${sliderPos}%` }}

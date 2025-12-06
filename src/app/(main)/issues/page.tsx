@@ -3,10 +3,7 @@
 import Link from "next/link";
 import { Card, Button } from "@/components/ui";
 import { MOCK_ISSUES } from "@/lib/mockIssues";
-
-function Icon(props: React.SVGProps<SVGSVGElement>) {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props} />;
-}
+import { Icon } from "@/components/Icon"; // Refactored Import
 
 function IssueIcon({ status }: { status: string }) {
   if (status === "open") {
@@ -22,19 +19,17 @@ function IssueIcon({ status }: { status: string }) {
 
 export default function IssuesPage() {
   return (
-    // Outer: Full width scroll container
     <div className="w-full h-full overflow-y-auto">
-        {/* Inner: Centered container */}
         <div className="p-6 space-y-6 max-w-screen-xl mx-auto">
         
-        {/* Search & Actions Header */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <div className="flex-1 w-full flex gap-2">
                 <div className="flex-1 relative">
+                    {/* Refactored: input-base */}
                     <input 
                         type="text" 
                         defaultValue="is:issue state:open" 
-                        className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 pl-8 text-sm text-gray-200 focus:border-blue-500 outline-none" 
+                        className="input-base pl-8 text-sm" 
                     />
                     <Icon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-gray-500"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></Icon>
                 </div>
@@ -46,10 +41,10 @@ export default function IssuesPage() {
             <Button variant="primary">New issue</Button>
         </div>
 
-        {/* Issues List Card */}
-        <Card className="overflow-hidden border-[#30363d] bg-[#161b22]">
+        {/* Refactored: border-default, bg-card */}
+        <Card className="overflow-hidden border-default bg-card">
             {/* List Header */}
-            <div className="flex items-center gap-4 p-4 border-b border-[#30363d] bg-[#161b22] text-sm">
+            <div className="flex items-center gap-4 p-4 border-b border-default bg-card text-sm">
             <div className="flex items-center gap-1 font-semibold text-gray-200">
                 <IssueIcon status="open" />
                 <span>4 Open</span>
@@ -69,9 +64,10 @@ export default function IssuesPage() {
             </div>
 
             {/* List Items */}
-            <div className="divide-y divide-[#30363d]">
+            <div className="divide-y divide-default">
                 {MOCK_ISSUES.map(issue => (
-                    <div key={issue.id} className="group flex items-start gap-3 p-3 sm:px-4 hover:bg-[#1c2128]">
+                    // Refactored: hover:bg-card-hover
+                    <div key={issue.id} className="group flex items-start gap-3 p-3 sm:px-4 hover:bg-card-hover">
                         <div className="mt-1">
                             <IssueIcon status={issue.status} />
                         </div>

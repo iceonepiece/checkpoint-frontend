@@ -18,21 +18,17 @@ export default function LoginPage() {
 
   // Fake Login
   const handleLogin = () => {
-    // Simulate fake loading time
     setLoading(true);
     setTimeout(() => {
-      localStorage.setItem("isLoggedIn", "true"); // Set fake log in flag
+      localStorage.setItem("isLoggedIn", "true");
       router.push("/");
   }, 1000);};
 
-  // const handleLogin = () => {
-  //   setLoading(true);
-  //   window.location.href = "/api/auth/github";
-  // };
-
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0d1117] p-4">
-      <Card className="w-full max-w-md p-8 space-y-8 bg-[#161b22] border-default">
+    // Refactored: bg-background
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      {/* Refactored: bg-card, border-default */}
+      <Card className="w-full max-w-md p-8 space-y-8 bg-card border-default">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-white">Checkpoint</h1>
           <p className="text-sm text-gray-400">

@@ -4,10 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { TreeNode } from "@/lib/mockFolderTree";
 import { MOCK_TREE } from "@/lib/mockFolderTree";
-
-function Icon(props: React.SVGProps<SVGSVGElement>) {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props} />;
-}
+import { Icon } from "@/components/Icon"; // Refactored Import
 
 function Caret({ open }: { open: boolean }) {
   return <svg className={`h-3 w-3 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>;
@@ -30,25 +27,42 @@ type ItemProps = {
 function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentPath }: ItemProps) {
   const isFolder = !!node.children?.length;
   const open = !!expanded[node.id];
-  const fullPath = parentPath ? `${parentPath}/${node.name}` : node.name;
+  const fullPath = parentPath ? `${parentPath}/${node.id}` : node.id;
   const selected = selectedId === node.id;
 
   return (
     <div>
-      <button
-        onClick={() => (isFolder ? toggle(node.id) : onSelect(node, fullPath))}
-        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${selected ? "bg-[#1c2128] text-white font-medium" : "text-gray-400 hover:bg-[#1c2128] hover:text-gray-200"}`}
-        style={{ paddingLeft: 12 + depth * 20 }}
+      {/* Row Container */}
+      <div
+        className={`flex w-full items-center gap-0.5 rounded-md py-0.5 pr-2 text-sm transition-colors ${selected ? "bg-card-hover text-white font-medium" : "text-gray-400 hover:bg-card-hover hover:text-gray-200"}`}
+        style={{ paddingLeft: 6 + depth * 20 }}
       >
-        {/* Fixed: Use a flex container for the Caret/Spacer to ensure consistent width */}
-        <span className="flex size-3 shrink-0 items-center justify-center text-gray-500">
-            {isFolder ? <Caret open={open} /> : <div className="size-3" />}
-        </span>
-        
-        <FolderIcon open={open} />
-        <span className="truncate">{node.name}</span>
-      </button>
+        {/* Zone 1: Expand/Collapse Arrow */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isFolder) toggle(node.id);
+          }}
+          className={`flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors ${
+            isFolder 
+              ? "hover:bg-white/10 hover:text-white cursor-pointer" 
+              : "cursor-default"
+          }`}
+        >
+          {isFolder ? <Caret open={open} /> : <div className="size-3" />}
+        </button>
 
+        {/* Zone 2: Navigation */}
+        <button
+          onClick={() => onSelect(node, fullPath)}
+          className="flex flex-1 items-center gap-2 truncate px-1 py-1 text-left rounded-sm cursor-pointer"
+        >
+          <FolderIcon open={open} />
+          <span className="truncate">{node.name}</span>
+        </button>
+      </div>
+
+      {/* Children */}
       {isFolder && open && (
         <div>
           {node.children!.map((child) => (
@@ -64,8 +78,13 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
   const router = useRouter();
   const params = useSearchParams();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ assets: true, scenes: true });
-  const [selectedId, setSelectedId] = useState<string | undefined>();
+  
+  const currentPath = params.get("path");
+  const currentId = currentPath ? currentPath.split("/").pop() : undefined;
+  const [selectedId, setSelectedId] = useState<string | undefined>(currentId);
+
   const toggle = (id: string) => setExpanded((m) => ({ ...m, [id]: !m[id] }));
+  
   const onSelect = (node: TreeNode, fullPath: string) => {
     setSelectedId(node.id);
     const qp = new URLSearchParams(params.toString());
@@ -74,14 +93,16 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
   };
 
   return (
-    <aside className="hidden w-72 shrink-0 flex-col border-r border-default bg-[#0d1117] md:flex">
+    // Refactored: border-default, bg-background
+    <aside className="hidden w-72 shrink-0 flex-col border-r border-default bg-background md:flex">
       <div className="p-4 border-b border-default mb-2">
         <div className="flex items-center justify-between">
            <div className="text-sm font-semibold text-gray-200">Directories</div>
         </div>
         
         <div className="mt-3 relative group">
-            <input type="text" placeholder="Filter folders..." className="w-full rounded-md bg-[#161b22] border border-[#30363d] px-3 py-1.5 pl-8 text-xs text-gray-200 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder-gray-500" />
+            {/* Refactored: Used 'input-base' class instead of manual styles */}
+            <input type="text" placeholder="Filter folders..." className="input-base pl-8 text-xs bg-card border-default" />
             <Icon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-500 group-focus-within:text-blue-400"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></Icon>
         </div>
       </div>

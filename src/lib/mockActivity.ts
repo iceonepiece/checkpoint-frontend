@@ -21,7 +21,6 @@ export type ContributionDay = {
 };
 
 // --- Mock Data ---
-
 export const PROJECT_STATS: StatItem[] = [
   { label: "Total Assets", value: "1,204", change: "+12 this week", trend: "up" },
   { label: "Storage Used", value: "45.2 GB", change: "24% of quota", trend: "neutral" },
@@ -37,9 +36,9 @@ export const RECENT_ACTIVITY: ActivityItem[] = [
   { id: "e5", user: "EnvArtist_01", avatar: "EA", action: "commented", target: "Rock_04 UVs", time: "3 days ago" },
 ];
 
-// Generate deterministic heatmap data (mimicking a year of history)
+// Generate deterministic heatmap data
 export const HEATMAP_DATA: ContributionDay[] = Array.from({ length: 364 }).map((_, i) => {
-  // Create a fake pattern: more activity on weekdays, less on weekends
+  // Create a fake pattern
   const date = new Date();
   date.setDate(date.getDate() - (364 - i));
   const dayOfWeek = date.getDay();
@@ -47,7 +46,6 @@ export const HEATMAP_DATA: ContributionDay[] = Array.from({ length: 364 }).map((
   let level: 0 | 1 | 2 | 3 | 4 = 0;
   let count = 0;
 
-  // More active on Mon(1), Wed(3), Fri(5)
   if (dayOfWeek !== 0 && dayOfWeek !== 6) {
       if (Math.random() > 0.4) {
           level = Math.floor(Math.random() * 4) + 1 as 0|1|2|3|4;

@@ -1,7 +1,7 @@
 export type Comment = {
   id: string;
   author: string;
-  avatar: string; // Initials or image URL
+  avatar: string;
   content: string;
   date: string;
   isOwner?: boolean;

@@ -34,7 +34,8 @@ export default function AssetPage(props: Params) {
               {asset.lockedBy && (
                 <>
                   <span className="mx-1 text-gray-600">•</span>
-                  <span className="rounded border border-[#30363d] px-1 text-xs text-gray-300">
+                  {/* Refactored: border-default */}
+                  <span className="rounded border border-default px-1 text-xs text-gray-300">
                     Locked by {asset.lockedBy}
                   </span>
                 </>
@@ -54,13 +55,14 @@ export default function AssetPage(props: Params) {
           </div>
         </div>
         
-        {/* Comparison Toolbar (Only visible in Compare Mode) */}
         {compareMode && (
-             <div className="mt-4 pt-4 border-t border-[#30363d] flex items-center gap-4 animate-in slide-in-from-top-2">
+             // Refactored: border-default
+             <div className="mt-4 pt-4 border-t border-default flex items-center gap-4 animate-in slide-in-from-top-2">
                 <div className="flex items-center gap-2 text-sm">
                     <span className="text-red-400 font-medium">Base:</span>
+                    {/* Refactored: bg-background, border-default */}
                     <select 
-                        className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-gray-200"
+                        className="bg-background border border-default rounded px-2 py-1 text-gray-200"
                         value={targetVersion}
                         onChange={(e) => setTargetVersion(e.target.value)}
                     >
@@ -72,7 +74,8 @@ export default function AssetPage(props: Params) {
                 <div className="text-gray-500">vs</div>
                 <div className="flex items-center gap-2 text-sm">
                     <span className="text-green-400 font-medium">Head:</span>
-                    <span className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-gray-400 cursor-not-allowed">
+                    {/* Refactored: bg-background, border-default */}
+                    <span className="bg-background border border-default rounded px-2 py-1 text-gray-400 cursor-not-allowed">
                         Current
                     </span>
                 </div>
@@ -80,11 +83,10 @@ export default function AssetPage(props: Params) {
         )}
       </Card>
 
-      {/* Content area */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 min-h-0 flex-1">
-        {/* Left: Preview */}
         <div className="flex flex-col gap-4 min-h-0">
-          <Card className="p-3 flex-1 min-h-0 bg-[#0d1117] flex flex-col justify-center">
+          {/* Refactored: bg-background */}
+          <Card className="p-3 flex-1 min-h-0 bg-background flex flex-col justify-center">
             {compareMode ? (
                 <DiffViewer 
                     before={oldAsset.thumb!} 
@@ -96,11 +98,11 @@ export default function AssetPage(props: Params) {
             )}
           </Card>
 
-          {/* Metadata Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
             <Card className="p-3">
               <SectionTitle>Metadata</SectionTitle>
-              <div className="mt-2 divide-y divide-[#30363d]">
+              {/* Refactored: divide-default */}
+              <div className="mt-2 divide-y divide-default">
                 <KeyRow k="Type" v={asset.type} />
                 <KeyRow 
                     k="Size" 
@@ -123,16 +125,18 @@ export default function AssetPage(props: Params) {
               <SectionTitle>Versions</SectionTitle>
               <ul className="mt-2 space-y-2 max-h-40 overflow-y-auto pr-2">
                 {asset.versions.map((v) => (
-                  <li key={v.id} className="flex items-center justify-between rounded-md border border-[#30363d] bg-[#0d1117] px-3 py-2 text-sm text-gray-200">
+                  // Refactored: border-default, bg-background
+                  <li key={v.id} className="flex items-center justify-between rounded-md border border-default bg-background px-3 py-2 text-sm text-gray-200">
                     <span className={v.id === asset.versions[0].id ? "text-green-400 font-medium" : ""}>
                         {v.label} {v.id === asset.versions[0].id && "(Current)"}
                     </span>
                     <div className="flex items-center gap-2 text-gray-400">
                       <span>{new Date(v.date).toLocaleDateString()}</span>
                       {!compareMode && (
+                          // Refactored: border-default
                           <button 
                             onClick={() => { setCompareMode(true); setTargetVersion(v.id); }}
-                            className="text-xs border border-[#30363d] rounded px-2 py-1 hover:bg-white/5"
+                            className="text-xs border border-default rounded px-2 py-1 hover:bg-white/5"
                           >
                               Diff
                           </button>
@@ -145,7 +149,6 @@ export default function AssetPage(props: Params) {
           </div>
         </div>
 
-        {/* Right: Review Panel */}
         <div className="min-h-0 overflow-y-auto">
              <ReviewPanel initialStatus={asset.status} />
         </div>
@@ -154,7 +157,6 @@ export default function AssetPage(props: Params) {
   );
 }
 
-// Helper mock function
 function getOldVersionMock(asset: any) {
     return {
         ...asset,

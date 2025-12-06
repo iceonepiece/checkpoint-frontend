@@ -1,19 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { Button, Card } from "@/components/ui";
-import { MOCK_FILES, type FileItem } from "@/lib/mockFiles"; // Import new data
+import { Icon } from "@/components/Icon"; // Refactored Import
+import { MOCK_FILES } from "@/lib/mockFiles";
+import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
 
-/* ---------- Types & Data ---------- */
+/* ---------- TYPES ---------- */
 type ViewMode = "grid" | "list";
-type Density = "compact" | "cozy" | "comfortable";
 
-/* ---------- Small utilities ---------- */
+/* ---------- UTILITIES ---------- */
+function findNode(nodes: TreeNode[], id: string): TreeNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findNode(node.children, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
 
-function Icon(props: React.SVGProps<SVGSVGElement>) {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props} />;
+function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
+  if (!pathStr) return [{ label: "Root" }];
+  const ids = pathStr.split("/");
+  return ids.map((id, index) => {
+    const node = findNode(tree, id);
+    const label = node ? node.name : id;
+    const hrefPath = ids.slice(0, index + 1).join("/");
+    return { label, href: `/?path=${hrefPath}` };
+  });
 }
 
 function LockIcon({ className }: { className?: string }) {
@@ -36,8 +55,6 @@ function fmtBytes(n: number) {
   return `${x.toFixed(x < 10 && i > 0 ? 1 : 0)} ${u[i]}`;
 }
 
-/* ---------- Row/Card components ---------- */
-
 function Kebab() {
   return (
     <Icon className="size-4 text-gray-400">
@@ -48,28 +65,26 @@ function Kebab() {
   );
 }
 
-function DriveCard({
-  file, selected, onToggle, size
-}: {
-  file: FileItem; selected: boolean; onToggle: () => void; size: Density;
-}) {
+/* ---------- CARD COMPONENTS ---------- */
+
+function DriveCard({ file, selected, onToggle, size }: any) {
   const badge = mimeBadge(file.type);
   const aspectClass = size === "comfortable" ? "aspect-[4/3]" : "aspect-video";
   const isLocked = !!file.lockedBy;
   
   return (
     <div className={`group relative overflow-hidden rounded-xl border transition hover:shadow-md hover:shadow-black/30 surface-card ${selected ? "ring-2 ring-blue-500 border-transparent" : "border-default"}`}>
-      {/* Click Target */}
-      {!file.isFolder && (
-        <Link href={`/asset/${file.id}`} className="absolute inset-0" style={{ zIndex: 0 }} aria-label={`Open ${file.name}`} />
-      )}
+      <Link 
+        href={file.isFolder ? `/?path=${file.currentPath}/${file.id}` : `/asset/${file.id}`} 
+        className="absolute inset-0" 
+        style={{ zIndex: 0 }} 
+        aria-label={`Open ${file.name}`} 
+      />
 
-      {/* Controls */}
       <div className="absolute left-2 top-2 z-10 flex gap-2">
         <input type="checkbox" className="size-4 accent-blue-500" checked={selected} onChange={onToggle} />
       </div>
       
-      {/* Lock Indicator */}
       {isLocked && (
         <div className="absolute left-2 top-8 z-10" title={`Locked by ${file.lockedBy}`}>
           <div className="bg-red-500/90 text-white p-1 rounded-md shadow-sm">
@@ -78,12 +93,12 @@ function DriveCard({
         </div>
       )}
 
-      <button className="absolute right-2 top-2 z-10 rounded-md p-1 text-gray-400 hover:bg-black/50" title="More actions">
+      <button className="absolute right-2 top-2 z-10 rounded-md p-1 text-gray-400 hover:bg-black/50">
         <Kebab />
       </button>
 
-      {/* Preview */}
-      <div className={`${aspectClass} w-full bg-[#0d1117] relative`}>
+      {/* Refactored: bg-[#0d1117] -> bg-background */}
+      <div className={`${aspectClass} w-full bg-background relative`}>
         {file.isFolder ? (
           <div className="h-full w-full grid place-items-center text-gray-500">
             <Icon className="size-8"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
@@ -97,7 +112,6 @@ function DriveCard({
           </div>
         )}
         
-        {/* Lock Overlay for Preview */}
         {isLocked && (
            <div className="absolute inset-0 bg-black/40 grid place-items-center">
              <div className="text-red-400 font-semibold text-xs bg-black/60 px-2 py-1 rounded border border-red-500/30 flex items-center gap-1">
@@ -107,17 +121,11 @@ function DriveCard({
         )}
       </div>
 
-      {/* Meta */}
-      <div className="relative z-10 flex items-center gap-2 px-3 py-2 bg-[#161b22]">
+      {/* Refactored: bg-[#161b22] -> bg-card */}
+      <div className="relative z-10 flex items-center gap-2 px-3 py-2 bg-card">
         <span className={`inline-block size-2 rounded-full ${badge.dot}`} />
         <div className="min-w-0 flex-1">
-          {file.isFolder ? (
-            <div className="truncate text-[15px] font-medium text-gray-200">{file.name}</div>
-          ) : (
-            <Link href={`/asset/${file.id}`} className="truncate text-[15px] font-medium text-gray-200 hover:underline">
-              {file.name}
-            </Link>
-          )}
+          <div className="truncate text-[15px] font-medium text-gray-200">{file.name}</div>
           <div className="truncate text-xs text-gray-400 flex items-center gap-1">
             {badge.label} • {fmtBytes(file.sizeBytes)}
             {isLocked && <span className="text-red-400">• {file.lockedBy}</span>}
@@ -128,31 +136,28 @@ function DriveCard({
   );
 }
 
-function DriveRow({
-  file, selected, onToggle
-}: {
-  file: FileItem; selected: boolean; onToggle: () => void;
-}) {
+function DriveRow({ file, selected, onToggle }: any) {
   const badge = mimeBadge(file.type);
   const isLocked = !!file.lockedBy;
 
   return (
-    <div className={`group grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] items-center gap-3 px-2 py-2 hover:bg-[#1c2128] border-b border-[#30363d]/50 last:border-0 ${selected ? "bg-[#1c2128]" : ""}`}>
+    // Refactored: bg-[#1c2128] -> bg-card-hover, border-[#30363d] -> border-default
+    <div className={`group grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] items-center gap-3 px-2 py-2 hover:bg-card-hover border-b border-default/50 last:border-0 ${selected ? "bg-card-hover" : ""}`}>
       <input type="checkbox" className="size-4 accent-blue-500" checked={selected} onChange={onToggle} />
       <div className="flex min-w-0 items-center gap-3">
-        <div className="grid size-8 place-items-center rounded-md bg-[#0d1117] text-gray-400 border border-[#30363d] relative">
+        {/* Refactored: bg-[#0d1117] -> bg-background */}
+        <div className="grid size-8 place-items-center rounded-md bg-background text-gray-400 border border-default relative">
           {file.isFolder ? (
              <Icon className="size-4"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
           ) : <span className="text-[10px] font-bold">{file.type.split('/')[0].toUpperCase().slice(0,3)}</span>}
-          
           {isLocked && (
-            <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 border border-[#0d1117]">
+            <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 border border-background">
               <LockIcon className="size-2 text-white" />
             </div>
           )}
         </div>
         <div className="min-w-0">
-          <Link href={file.isFolder ? "#" : `/asset/${file.id}`} className="truncate font-medium text-gray-200 hover:underline">
+          <Link href={file.isFolder ? `/?path=${file.currentPath}/${file.id}` : `/asset/${file.id}`} className="truncate font-medium text-gray-200 hover:underline">
             {file.name}
           </Link>
           <div className="text-xs text-gray-500 sm:hidden">
@@ -172,7 +177,7 @@ function DriveRow({
   );
 }
 
-function SelectionBar({ count, onLock, clear }: { count: number; onLock: () => void; clear: () => void }) {
+function SelectionBar({ count, onLock, clear }: any) {
   if (count === 0) return null;
   return (
     <div className="sticky top-2 z-40 mb-4 rounded-lg surface-overlay px-3 py-2 text-sm text-gray-200 flex items-center justify-between animate-in slide-in-from-top-2">
@@ -189,35 +194,49 @@ function SelectionBar({ count, onLock, clear }: { count: number; onLock: () => v
   );
 }
 
+/* ---------- MAIN EXPORT ---------- */
+
 export default function FileBrowser() {
   const [view, setView] = useState<ViewMode>("grid");
-  const [files, setFiles] = useState<FileItem[]>(MOCK_FILES);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  
+  const searchParams = useSearchParams();
+  const currentPath = searchParams.get("path") || "assets"; 
+  const currentFolderId = currentPath.split("/").pop() || "assets";
+
+  // 1. Get Subfolders
+  const folderNode = findNode(MOCK_TREE, currentFolderId);
+  const subFolders = folderNode?.children?.map(child => ({
+      id: child.id,
+      name: child.name,
+      type: "folder",
+      sizeBytes: 0,
+      modifiedAt: new Date().toISOString(),
+      isFolder: true,
+      currentPath: currentPath 
+  })) || [];
+
+  // 2. Get Files
+  const currentFiles = MOCK_FILES.filter(f => f.folderId === currentFolderId).map(f => ({
+      ...f,
+      currentPath: currentPath 
+  }));
+
+  const displayItems = [...subFolders, ...currentFiles];
 
   const toggleOne = (id: string) => setSelected((s) => ({ ...s, [id]: !s[id] }));
   const clearSelection = () => setSelected({});
-
-  // Mock Lock Functionality
-  const handleLock = () => {
-    const selectedIds = Object.keys(selected).filter(k => selected[k]);
-    setFiles(prev => prev.map(f => {
-      if (selectedIds.includes(f.id)) {
-        // Toggle: If locked, unlock. If unlocked, lock as "Me".
-        return { ...f, lockedBy: f.lockedBy ? undefined : "Me" };
-      }
-      return f;
-    }));
-    clearSelection();
-  };
+  const handleLock = () => { clearSelection(); };
 
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0 overflow-y-auto">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <Breadcrumbs items={[{ label: "Root" }, { label: "Alpha" }, { label: "Assets" }]} />
+        <Breadcrumbs items={getBreadcrumbs(currentPath, MOCK_TREE)} />
         
         <div className="flex items-center gap-2">
-           <div className="flex items-center rounded-md border border-default bg-[#0d1117] p-1">
+           {/* Refactored: border-default, bg-background */}
+           <div className="flex items-center rounded-md border border-default bg-background p-1">
             <button onClick={() => setView("grid")} className={`p-1.5 rounded ${view === "grid" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white"}`}>
                <Icon className="size-4"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></Icon>
             </button>
@@ -239,15 +258,21 @@ export default function FileBrowser() {
       />
 
       {/* Grid / List */}
-      {view === "grid" ? (
+      {displayItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+              <Icon className="size-12 mb-2 opacity-20"><path d="M3 7h5l2 2h11v10H3z"/></Icon>
+              <p>This folder is empty</p>
+          </div>
+      ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-20">
-          {files.map((f) => (
+          {displayItems.map((f: any) => (
             <DriveCard key={f.id} file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} size="cozy" />
           ))}
         </div>
       ) : (
         <Card className="flex flex-col">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] gap-3 px-4 py-3 border-b border-[#30363d] text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          {/* Refactored: border-default */}
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] gap-3 px-4 py-3 border-b border-default text-xs font-semibold text-gray-400 uppercase tracking-wider">
              <span className="w-4" />
              <span>Name</span>
              <span className="hidden sm:block">Type</span>
@@ -255,7 +280,7 @@ export default function FileBrowser() {
              <span className="hidden sm:block">Size</span>
           </div>
           <div>
-            {files.map((f) => (
+            {displayItems.map((f: any) => (
               <DriveRow key={f.id} file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} />
             ))}
           </div>
