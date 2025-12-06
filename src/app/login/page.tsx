@@ -16,13 +16,19 @@ export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  // Fake Login
   const handleLogin = () => {
+    // Simulate fake loading time
     setLoading(true);
-    // Simulate network delay before redirecting
     setTimeout(() => {
+      localStorage.setItem("isLoggedIn", "true"); // Set fake log in flag
       router.push("/");
-    }, 1000);
-  };
+  }, 1000);};
+
+  // const handleLogin = () => {
+  //   setLoading(true);
+  //   window.location.href = "/api/auth/github";
+  // };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#0d1117] p-4">
