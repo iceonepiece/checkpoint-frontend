@@ -10,40 +10,39 @@ export async function GET() {
 
   const { octokit } = auth;
 
+
+  const filePath = "flag.png";
+
   try
   {
-    const { data: user } = await octokit.rest.users.getAuthenticated();
-
-
+    //const { data: user } = await octokit.rest.users.getAuthenticated();
 
     const { data: commits } = await octokit.request(
       "GET /repos/{owner}/{repo}/commits?path={path}&sha={branch}",
       {
         owner: 'iceonepiece',
         repo: 'web-hook-test',
-        path: 'flag.png',
+        path: filePath,
         branch: "main"
       }
     );
 
-    const commitSha = "83d4fefe8457b367ad94b807e432987511f00505";
-  
+    const fileVersions = [];
 
-    const filePath = 'flag.png';
+    for (const commit of commits) {
+        const { data: yy } = await octokit.request(
+            `GET /repos/{owner}/{repo}/contents/{path}?ref=${commit.sha}`,
+            {
+              owner: 'iceonepiece',
+              repo: 'web-hook-test',
+              path: filePath,
+            }
+        );
+        fileVersions.push(yy);
+    }
+    
 
-    const { data: yy } = await octokit.request(
-      `GET /repos/{owner}/{repo}/contents/{path}?ref=${commitSha}`,
-      {
-        owner: 'iceonepiece',
-        repo: 'web-hook-test',
-        path: filePath,
-      }
-    );
-
-
-    console.log(yy);
-
-    return NextResponse.json(user);
+    return NextResponse.json({ fileVersions });
 
   } catch (err) {
     console.error("Error:", err);
