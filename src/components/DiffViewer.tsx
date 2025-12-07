@@ -4,8 +4,8 @@ import { useState, useRef } from "react";
 
 function DragHandle() {
   return (
-    <div className="pointer-events-none absolute inset-y-0 w-1 bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)] z-30">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-8 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-800">
+    <div className="pointer-events-none absolute inset-y-0 -ml-[1px] w-0.5 bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)] z-30">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-8 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-800 cursor-ew-resize pointer-events-auto">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-5">
           <path d="M18 8L22 12L18 16" />
           <path d="M6 8L2 12L6 16" />
@@ -44,6 +44,8 @@ export default function DiffViewer({ before, after, type }: Props) {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    
+    // Calculate percentage and clamp between 0 and 100
     const pos = ((x - rect.left) / rect.width) * 100;
     setSliderPos(Math.min(100, Math.max(0, pos)));
   };
@@ -51,26 +53,45 @@ export default function DiffViewer({ before, after, type }: Props) {
   return (
     <div 
       ref={containerRef}
-      className="relative w-full aspect-[16/10] overflow-hidden rounded-md bg-background select-none touch-none cursor-ew-resize group"
+      className="relative w-full aspect-[16/10] overflow-hidden rounded-md bg-background select-none touch-none group"
       onMouseMove={(e) => e.buttons === 1 && handleDrag(e)}
       onTouchMove={handleDrag}
       onClick={handleDrag}
     >
-      <img src={after} alt="New" className="absolute inset-0 size-full object-contain" />
-      <div className="absolute top-2 right-2 bg-green-600/90 text-white text-xs px-2 py-1 rounded shadow-sm z-10">
+      {/* 1. Background Image (New/After) */}
+      {/* It sits fully behind everything */}
+      <img 
+        src={after} 
+        alt="New" 
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none" 
+      />
+      <div className="absolute top-2 right-2 bg-green-600/90 text-white text-xs px-2 py-1 rounded shadow-sm z-10 font-medium">
         New (Head)
       </div>
 
+      {/* 2. Foreground Image (Old/Before) */}
+      {/* It sits on top but is masked by clip-path. This ensures it never squashes. */}
       <div 
-        className="absolute inset-0 overflow-hidden border-r border-white/20"
-        style={{ width: `${sliderPos}%` }}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ 
+          // Clip from the right side based on slider position
+          clipPath: `inset(0 ${100 - sliderPos}% 0 0)` 
+        }}
       >
-        <img src={before} alt="Old" className="absolute top-0 left-0 max-w-none h-full w-[100cqw] object-contain" />
-        <div className="absolute top-2 left-2 bg-red-600/90 text-white text-xs px-2 py-1 rounded shadow-sm z-10">
+        <img 
+          src={before} 
+          alt="Old" 
+          className="absolute inset-0 w-full h-full object-contain" 
+        />
+        <div className="absolute top-2 left-2 bg-red-600/90 text-white text-xs px-2 py-1 rounded shadow-sm z-10 font-medium">
           Old (v1)
         </div>
+        
+        {/* Border line for the split */}
+        <div className="absolute right-0 top-0 bottom-0 w-[1px] bg-white/50"></div>
       </div>
 
+      {/* 3. Interactive Slider Handle */}
       <div 
         className="absolute inset-y-0"
         style={{ left: `${sliderPos}%` }}

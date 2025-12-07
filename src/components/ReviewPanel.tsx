@@ -1,68 +1,102 @@
 "use client";
 
 import { useState } from "react";
-import { Card, SectionTitle } from "./ui";
+import { Card, SectionTitle, Button } from "./ui";
+import { type Comment } from "@/lib/mockAssets";
 
 type ReviewState = "Needs changes" | "Pending" | "Approved";
 
 type ReviewProps = {
-  initialStatus: ReviewState;
+  status: ReviewState;
+  onStatusChange: (s: ReviewState) => void;
+  comments: Comment[];
+  onAddComment: (text: string) => void;
 };
 
-export default function ReviewPanel({ initialStatus }: ReviewProps) {
-  const [status, setStatus] = useState(initialStatus);
-  const [comments, setComments] = useState<string[]>([
-    "Looks good overall, maybe lighten the metal.",
-  ]);
+export default function ReviewPanel({ status, onStatusChange, comments, onAddComment }: ReviewProps) {
   const [draft, setDraft] = useState("");
 
+  const handlePost = () => {
+    if (!draft.trim()) return;
+    onAddComment(draft.trim());
+    setDraft("");
+  };
+
   return (
-    <Card className="p-3 space-y-3">
-      <SectionTitle>Review</SectionTitle>
+    <div className="space-y-6 pb-6">
+      
+      {/* Panel 1: Status Control */}
+      <Card className="p-4 space-y-3 bg-card border-default">
+        <SectionTitle>Asset Status</SectionTitle>
+        <div>
+            <select
+              className="input-base w-full"
+              value={status}
+              onChange={(e) => onStatusChange(e.target.value as ReviewState)}
+            >
+              <option>Needs changes</option>
+              <option>Pending</option>
+              <option>Approved</option>
+            </select>
+        </div>
+      </Card>
 
-      <div className="space-y-1">
-        <label className="text-xs text-gray-400">Status</label>
-        <select
-          className="w-full rounded-md border border-default bg-background px-2 py-1.5 text-sm text-gray-200"
-          value={status}
-          onChange={(e) => setStatus(e.target.value as ReviewState)}
-        >
-          <option>Needs changes</option>
-          <option>Pending</option>
-          <option>Approved</option>
-        </select>
-      </div>
+      {/* Panel 2: Conversation */}
+      <Card className="p-4 space-y-4 bg-card border-default">
+        <SectionTitle>Comments</SectionTitle>
 
-      <div className="space-y-1">
-        <label className="text-xs text-gray-400">Comments</label>
-        <div className="space-y-2">
-          {comments.map((c, i) => (
-            <div key={i} className="rounded-md border border-default bg-background px-3 py-2 text-sm text-gray-200">
-              {c}
+        <div className="space-y-4">
+          {comments.map((c) => (
+            <div key={c.id} className="flex gap-3 text-sm group">
+               {/* Avatar */}
+               <div className="size-8 rounded-full bg-gray-700 flex items-center justify-center shrink-0 text-xs font-bold text-gray-300 border border-default">
+                  {c.user.slice(0, 2).toUpperCase()}
+               </div>
+               
+               {/* Content */}
+               <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                     <span className="font-semibold text-gray-200">{c.user}</span>
+                     <span className="text-xs text-gray-500">{c.date}</span>
+                  </div>
+                  <p className="text-gray-300 leading-relaxed bg-white/5 p-2 rounded-md rounded-tl-none border border-default/50">
+                    {c.text}
+                  </p>
+               </div>
             </div>
           ))}
+          {comments.length === 0 && (
+            <div className="text-center text-gray-500 text-xs py-10">No comments yet. Be the first!</div>
+          )}
         </div>
-      </div>
 
-      <div className="space-y-2">
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add a comment…"
-          className="min-h-[80px] w-full rounded-md border border-default bg-background px-3 py-2 text-sm text-gray-200 outline-none"
-        />
-        <div className="flex items-center justify-end gap-2">
-          <button className="rounded-md border border-default bg-background px-3 py-1.5 text-sm text-gray-200 hover:bg-card-hover">
-            Create issue
-          </button>
-          <button
-            onClick={() => { if (!draft.trim()) return; setComments((c) => [draft.trim(), ...c]); setDraft(""); }}
-            className="rounded-md bg-[#238636] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#2ea043]"
-          >
-            Comment
-          </button>
+        {/* Input Area */}
+        <div className="pt-3 border-t border-default space-y-3">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Write a comment..."
+            className="input-base min-h-[80px] resize-none"
+            onKeyDown={(e) => {
+                if(e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handlePost();
+                }
+            }}
+          />
+          <div className="flex justify-end">
+            <Button 
+                variant="primary" 
+                size="sm" 
+                onClick={handlePost}
+                disabled={!draft.trim()}
+            >
+              Comment
+            </Button>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+    </div>
   );
 }

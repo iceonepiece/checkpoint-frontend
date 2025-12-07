@@ -7,8 +7,9 @@ export type FileItem = {
   thumb?: string;    
   isFolder?: boolean;
   lockedBy?: string;
-  lockedAt?: string; // New field for lock timestamp
+  lockedAt?: string;
   folderId?: string;
+  path?: string; // <--- ADDED THIS LINE
 };
 
 export const MOCK_FILES: FileItem[] = [
@@ -29,7 +30,7 @@ export const MOCK_FILES: FileItem[] = [
     sizeBytes: 12500000, 
     modifiedAt: "2025-01-16", 
     lockedBy: "Vibhumi.S",
-    lockedAt: "2025-01-16T09:30:00Z", // Added timestamp
+    lockedAt: "2025-01-16T09:30:00Z",
     folderId: "chars"
   },
 
@@ -70,7 +71,7 @@ export const MOCK_FILES: FileItem[] = [
     sizeBytes: 95000, 
     modifiedAt: "2025-01-18",
     lockedBy: "Jarusrawee.D",
-    lockedAt: "2025-01-18T14:20:00Z", // Added timestamp
+    lockedAt: "2025-01-18T14:20:00Z",
     folderId: "ui"
   },
 ];

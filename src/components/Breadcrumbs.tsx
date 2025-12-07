@@ -13,7 +13,7 @@ export default function Breadcrumbs({ items }: { items: Crumb[] }) {
           {c.href ? (
             <Link
               href={c.href}
-              className="rounded px-2 py-1 text-gray-400 hover:bg-card-hover hover:text-foreground transition-colors"
+              className="rounded px-2 py-1 text-blue-400 hover:bg-card-hover hover:text-blue-400 transition-colors"
             >
               {c.label}
             </Link>

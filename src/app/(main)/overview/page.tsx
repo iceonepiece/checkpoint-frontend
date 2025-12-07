@@ -83,9 +83,11 @@ export default function OverviewPage() {
                         </div>
                     </div>
                     <div className="pt-2 border-t border-default">
+                        <a href="https://github.com/Example-User/Checkpoint-Project/settings/access" target="_blank" rel="noopener noreferrer">
                         <button className="text-xs text-blue-400 hover:underline w-full text-left">
                             + Invite people
                         </button>
+                        </a>
                     </div>
                 </div>
             </Card>
