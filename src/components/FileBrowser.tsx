@@ -5,8 +5,8 @@ import React, { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { Button, Card } from "@/components/ui";
-import { Icon } from "@/components/Icon";
-import { MOCK_FILES } from "@/lib/mockFiles";
+import { Icon } from "@/components/Icon"; 
+import { MOCK_FILES, type FileItem } from "@/lib/mockFiles";
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
 
 /* ---------- TYPES ---------- */
@@ -24,6 +24,25 @@ function findNode(nodes: TreeNode[], id: string): TreeNode | undefined {
   return undefined;
 }
 
+// NEW HELPER: Extract initial locks from the mock tree
+function getInitialFolderLocks(nodes: TreeNode[]) {
+  let locks: Record<string, { lockedBy: string; lockedAt: string }> = {};
+  
+  function traverse(list: TreeNode[]) {
+    list.forEach(node => {
+      if (node.lockedBy) {
+        locks[node.id] = { lockedBy: node.lockedBy, lockedAt: node.lockedAt || "" };
+      }
+      if (node.children) {
+        traverse(node.children);
+      }
+    });
+  }
+  
+  traverse(nodes);
+  return locks;
+}
+
 function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
   if (!pathStr) return [{ label: "Root" }];
   const ids = pathStr.split("/");
@@ -35,6 +54,7 @@ function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
   });
 }
 
+// ... (Keep LockIcon, mimeBadge, fmtBytes, Kebab, CustomCheckbox unchanged) ...
 function LockIcon({ className }: { className?: string }) {
   return <Icon className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></Icon>;
 }
@@ -65,12 +85,37 @@ function Kebab() {
   );
 }
 
-/* ---------- CARD COMPONENTS ---------- */
+function CustomCheckbox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <div 
+      onClick={(e) => { e.stopPropagation(); onChange(); }} 
+      className="group cursor-pointer relative size-5 grid place-items-center"
+    >
+       <div className={`size-4 rounded-md border transition-all duration-200 flex items-center justify-center ${
+         checked 
+           ? "bg-blue-600 border-blue-600" 
+           : "bg-card border-default group-hover:border-gray-400"
+       }`}>
+         <Icon 
+            className={`size-3 text-white transition-transform duration-200 ${checked ? "scale-100" : "scale-0"}`} 
+            strokeWidth="3"
+         >
+            <path d="M5 13l4 4L19 7" />
+         </Icon>
+       </div>
+    </div>
+  );
+}
+
+// ... (Keep DriveCard and DriveRow unchanged) ...
 function DriveCard({ file, selected, onToggle, size }: any) {
   const badge = mimeBadge(file.type);
   const aspectClass = size === "comfortable" ? "aspect-[4/3]" : "aspect-video";
   const isLocked = !!file.lockedBy;
   
+  const lockDate = file.lockedAt ? new Date(file.lockedAt).toLocaleString() : "";
+  const lockTooltip = isLocked ? `Locked by ${file.lockedBy} on ${lockDate}` : "";
+
   return (
     <div className={`group relative overflow-hidden rounded-xl border transition hover:shadow-md hover:shadow-black/30 surface-card ${selected ? "ring-2 ring-blue-500 border-transparent" : "border-default"}`}>
       <Link 
@@ -81,11 +126,11 @@ function DriveCard({ file, selected, onToggle, size }: any) {
       />
 
       <div className="absolute left-2 top-2 z-10 flex gap-2">
-        <input type="checkbox" className="size-4 accent-blue-500" checked={selected} onChange={onToggle} />
+        <CustomCheckbox checked={selected} onChange={onToggle} />
       </div>
       
       {isLocked && (
-        <div className="absolute left-2 top-8 z-10" title={`Locked by ${file.lockedBy}`}>
+        <div className="absolute left-2 top-8 z-10" title={lockTooltip}>
           <div className="bg-red-500/90 text-white p-1 rounded-md shadow-sm">
             <LockIcon className="size-3" />
           </div>
@@ -110,7 +155,7 @@ function DriveCard({ file, selected, onToggle, size }: any) {
         )}
         
         {isLocked && (
-           <div className="absolute inset-0 bg-black/40 grid place-items-center">
+           <div className="absolute inset-0 bg-black/40 grid place-items-center" title={lockTooltip}>
              <div className="text-red-400 font-semibold text-xs bg-black/60 px-2 py-1 rounded border border-red-500/30 flex items-center gap-1">
                <LockIcon className="size-3" /> Locked
              </div>
@@ -135,17 +180,21 @@ function DriveCard({ file, selected, onToggle, size }: any) {
 function DriveRow({ file, selected, onToggle }: any) {
   const badge = mimeBadge(file.type);
   const isLocked = !!file.lockedBy;
+  
+  const lockDate = file.lockedAt ? new Date(file.lockedAt).toLocaleString() : "";
+  const lockTooltip = isLocked ? `Locked by ${file.lockedBy} on ${lockDate}` : "";
 
   return (
     <div className={`group grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] items-center gap-3 px-2 py-2 hover:bg-card-hover border-b border-default/50 last:border-0 ${selected ? "bg-card-hover" : ""}`}>
-      <input type="checkbox" className="size-4 accent-blue-500" checked={selected} onChange={onToggle} />
+      <CustomCheckbox checked={selected} onChange={onToggle} />
+      
       <div className="flex min-w-0 items-center gap-3">
         <div className="grid size-8 place-items-center rounded-md bg-background text-gray-400 border border-default relative">
           {file.isFolder ? (
              <Icon className="size-4"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
           ) : <span className="text-[10px] font-bold">{file.type.split('/')[0].toUpperCase().slice(0,3)}</span>}
           {isLocked && (
-            <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 border border-background">
+            <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 border border-background" title={lockTooltip}>
               <LockIcon className="size-2 text-white" />
             </div>
           )}
@@ -160,7 +209,7 @@ function DriveRow({ file, selected, onToggle }: any) {
         </div>
       </div>
       <div className="text-sm text-gray-400 hidden sm:block">
-        {isLocked ? <span className="text-red-400 flex items-center gap-1"><LockIcon className="size-3"/> {file.lockedBy}</span> : badge.label}
+        {isLocked ? <span className="text-red-400 flex items-center gap-1" title={lockTooltip}><LockIcon className="size-3"/> {file.lockedBy}</span> : badge.label}
       </div>
       <div className="text-sm text-gray-400 hidden md:block">{new Date(file.modifiedAt).toLocaleDateString()}</div>
       <div className="text-sm text-gray-400 hidden sm:block">{fmtBytes(file.sizeBytes)}</div>
@@ -189,28 +238,42 @@ function SelectionBar({ count, onLock, clear }: any) {
 }
 
 /* ---------- MAIN EXPORT ---------- */
+
 export default function FileBrowser() {
   const [view, setView] = useState<ViewMode>("grid");
+  
+  // Files State
+  const [files, setFiles] = useState<FileItem[]>(MOCK_FILES);
+  // Folder Locks State (Initialized from Mock Tree)
+  const [folderLocks, setFolderLocks] = useState<Record<string, { lockedBy: string; lockedAt: string }>>(
+    getInitialFolderLocks(MOCK_TREE)
+  );
+  
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   
   const searchParams = useSearchParams();
   const currentPath = searchParams.get("path") || "assets"; 
   const currentFolderId = currentPath.split("/").pop() || "assets";
 
-  // Get Subfolders
+  // 1. Get Subfolders (Dynamic with Locks)
   const folderNode = findNode(MOCK_TREE, currentFolderId);
-  const subFolders = folderNode?.children?.map(child => ({
-      id: child.id,
-      name: child.name,
-      type: "folder",
-      sizeBytes: 0,
-      modifiedAt: new Date().toISOString(),
-      isFolder: true,
-      currentPath: currentPath 
-  })) || [];
+  const subFolders = folderNode?.children?.map(child => {
+      const lockData = folderLocks[child.id];
+      return {
+        id: child.id,
+        name: child.name,
+        type: "folder",
+        sizeBytes: 0,
+        modifiedAt: new Date().toISOString(),
+        isFolder: true,
+        currentPath: currentPath,
+        lockedBy: lockData?.lockedBy,
+        lockedAt: lockData?.lockedAt
+      };
+  }) || [];
 
-  // Get Files
-  const currentFiles = MOCK_FILES.filter(f => f.folderId === currentFolderId).map(f => ({
+  // 2. Get Files (Filtered from state 'files')
+  const currentFiles = files.filter(f => f.folderId === currentFolderId).map(f => ({
       ...f,
       currentPath: currentPath 
   }));
@@ -219,7 +282,44 @@ export default function FileBrowser() {
 
   const toggleOne = (id: string) => setSelected((s) => ({ ...s, [id]: !s[id] }));
   const clearSelection = () => setSelected({});
-  const handleLock = () => { clearSelection(); };
+
+  // Handle Lock Logic for both Files and Folders
+  const handleLock = () => {
+    const selectedIds = Object.keys(selected).filter(k => selected[k]);
+    
+    // 1. Update Files State
+    setFiles(prev => prev.map(f => {
+      if (selectedIds.includes(f.id)) {
+        const isLocked = !!f.lockedBy;
+        return { 
+            ...f, 
+            lockedBy: isLocked ? undefined : "Me",
+            lockedAt: isLocked ? undefined : new Date().toISOString()
+        };
+      }
+      return f;
+    }));
+
+    // 2. Update Folder Locks State
+    const visibleFolderIds = subFolders.map(f => f.id);
+    const targetFolders = selectedIds.filter(id => visibleFolderIds.includes(id));
+    
+    if (targetFolders.length > 0) {
+        setFolderLocks(prev => {
+            const next = { ...prev };
+            targetFolders.forEach(id => {
+                if (next[id]) {
+                    delete next[id]; // Unlock
+                } else {
+                    next[id] = { lockedBy: "Me", lockedAt: new Date().toISOString() }; // Lock
+                }
+            });
+            return next;
+        });
+    }
+    
+    clearSelection();
+  };
 
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0 overflow-y-auto">
@@ -229,10 +329,10 @@ export default function FileBrowser() {
         
         <div className="flex items-center gap-2">
            <div className="flex items-center rounded-md border border-default bg-background p-1">
-            <button onClick={() => setView("grid")} className={`p-1.5 rounded ${view === "grid" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white"}`}>
+            <button onClick={() => setView("grid")} className={`p-1.5 rounded ${view === "grid" ? "bg-card-hover text-white" : "text-gray-400 hover:text-white"}`}>
                <Icon className="size-4"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></Icon>
             </button>
-            <button onClick={() => setView("list")} className={`p-1.5 rounded ${view === "list" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white"}`}>
+            <button onClick={() => setView("list")} className={`p-1.5 rounded ${view === "list" ? "bg-card-hover text-white" : "text-gray-400 hover:text-white"}`}>
                <Icon className="size-4"><path d="M8 6h12M4 6h1M8 12h12M4 12h1M8 18h12M4 18h1" /></Icon>
             </button>
            </div>

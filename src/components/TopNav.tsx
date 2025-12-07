@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { Icon } from "@/components/Icon";
+import { MOCK_REPOS } from "@/lib/mockRepos";
 
 export default function TopNav() {
   const pathname = usePathname();
-  
+  const [repoOpen, setRepoOpen] = useState(false);
+  const [currentRepo, setCurrentRepo] = useState(MOCK_REPOS[0]); 
+
   const tabs = [
     { label: "Overview", href: "/overview" },
     { label: "Repository", href: "/" },
@@ -18,26 +22,87 @@ export default function TopNav() {
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
 
   return (
-    <header className="sticky top-0 z-50 border-b border-default bg-header/95 backdrop-blur">
-      <div className="h-14 px-4 flex items-center gap-4 text-gray-200">
-        <button className="sm:hidden text-gray-400"><Icon className="size-6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h16" /></Icon></button>
-
-        <div className="hidden md:flex items-center gap-2 text-sm text-gray-300">
-          <div className="size-6 bg-gray-700 rounded-full" />
-          <span className="opacity-70">Example-User</span>
-          <span className="opacity-50">/</span>
-          <Link href="#" className="font-semibold text-white hover:underline">Checkpoint-Project</Link>
-          <span className="ml-2 rounded-full border border-default px-2 py-0.5 text-xs text-gray-400">Public</span>
+    <header className="sticky top-0 z-50 border-b border-default bg-[var(--bg-header)] backdrop-blur">
+      <div className="h-14 px-4 flex items-center gap-4">
+        
+        {/* LEFT: Site Logo & Name */}
+        <div className="flex items-center gap-3 shrink-0">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <div className="size-8 rounded-md bg-white text-black flex items-center justify-center">
+               <Icon className="size-5" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></Icon>
+            </div>
+            <span className="font-bold text-lg tracking-tight text-white hidden md:block">Checkpoint</span>
+          </Link>
         </div>
 
-        <div className="flex-1" /> 
+        {/* CENTER: Repository Selector */}
+        <div className="flex-1 flex justify-center min-w-0 px-2 md:px-6">
+            <div className="relative w-full max-w-8xl">
+                <button 
+                    onClick={() => setRepoOpen(!repoOpen)}
+                    className="flex items-center justify-between w-full gap-2 text-sm font-medium text-gray-200 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-md transition-colors border border-transparent hover:border-default"
+                >
+                    <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-1 truncate">
+                            <span className="text-gray-400 font-normal shrink-0">{currentRepo.owner} /</span>
+                            <span className="truncate">{currentRepo.name}</span>
+                        </div>
+                        
+                        {/* NEW: Public/Private Tag */}
+                        <span className="rounded-full border border-default px-2 py-0.5 text-[10px] text-gray-400 shrink-0 font-medium">
+                            {currentRepo.private ? "Private" : "Public"}
+                        </span>
+                    </div>
 
-        <div className="ml-auto flex items-center gap-2">
-           <div className="size-8 rounded-full bg-green-600 border border-default" />
+                    <Icon className="size-3 text-gray-500 ml-1 shrink-0"><path d="m6 9 6 6 6-6"/></Icon>
+                </button>
+
+                {/* Dropdown Menu */}
+                {repoOpen && (
+                    <>
+                        <div className="fixed inset-0 z-40" onClick={() => setRepoOpen(false)} />
+                        
+                        <div className="absolute top-full mt-2 w-full z-50 rounded-lg surface-overlay bg-[var(--bg-card)] border border-default py-1 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-default mb-1">
+                                Switch Repository
+                            </div>
+                            {MOCK_REPOS.map((repo) => (
+                                <button
+                                    key={repo.id}
+                                    onClick={() => { setCurrentRepo(repo); setRepoOpen(false); }}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--bg-hover)] flex items-center gap-2"
+                                >
+                                    <div className={`size-2 rounded-full ${repo.id === currentRepo.id ? "bg-green-500" : "bg-transparent border border-gray-600"}`} />
+                                    <span className="truncate">{repo.fullName}</span>
+                                    {/* Optional: Add tag in dropdown too */}
+                                    <span className="ml-auto text-xs text-gray-500">
+                                        {repo.private ? "Private" : "Public"}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+
+        {/* RIGHT: Profile Picture */}
+        <div className="flex items-center gap-3 shrink-0">
+           <a 
+             href="https://github.com/Example-User" 
+             target="_blank" 
+             rel="noopener noreferrer"
+             className="size-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 border border-default hover:ring-2 hover:ring-blue-500/50 transition-all cursor-pointer overflow-hidden"
+             title="View GitHub Profile"
+           >
+             {/* eslint-disable-next-line @next/next/no-img-element */}
+             <img src="/avatars/user_placeholder.jpg" alt="" className="w-full h-full object-cover opacity-0" /> 
+           </a>
         </div>
       </div>
       
-      <div className="px-4 flex gap-1 overflow-x-auto">
+      {/* Tabs */}
+      <div className="px-4 flex gap-1 overflow-x-auto border-t border-default/20">
         {tabs.map((tab) => {
            if (!tab.external) {
              return (
