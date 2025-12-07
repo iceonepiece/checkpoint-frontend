@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Icon } from "@/components/Icon"; // Refactored Import
+import { Icon } from "@/components/Icon";
 
 export default function TopNav() {
   const pathname = usePathname();
@@ -18,8 +18,7 @@ export default function TopNav() {
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
 
   return (
-    // Refactored: border-default, bg-background/95
-    <header className="sticky top-0 z-50 border-b border-default bg-background/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-default bg-header/95 backdrop-blur">
       <div className="h-14 px-4 flex items-center gap-4 text-gray-200">
         <button className="sm:hidden text-gray-400"><Icon className="size-6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h16" /></Icon></button>
 

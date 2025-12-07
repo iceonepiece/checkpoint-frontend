@@ -30,11 +30,9 @@ export default function DiffViewer({ before, after, type }: Props) {
   if (!isImage) {
     return (
       <div className="grid grid-cols-2 gap-4 h-full">
-        {/* Refactored: bg-background */}
         <div className="bg-background p-4 rounded border border-red-900/30 flex items-center justify-center text-red-400">
            Old Version (Non-visual diff)
         </div>
-        {/* Refactored: bg-background */}
         <div className="bg-background p-4 rounded border border-green-900/30 flex items-center justify-center text-green-400">
            New Version
         </div>
@@ -51,7 +49,6 @@ export default function DiffViewer({ before, after, type }: Props) {
   };
 
   return (
-    // Refactored: bg-background
     <div 
       ref={containerRef}
       className="relative w-full aspect-[16/10] overflow-hidden rounded-md bg-background select-none touch-none cursor-ew-resize group"

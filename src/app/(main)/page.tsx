@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import FileBrowser from "@/components/FileBrowser";
-import FolderSidebar from "@/components/FolderSidebar"; // Import Sidebar here
+import FolderSidebar from "@/components/FolderSidebar";
 
 export default function Page() {
   const router = useRouter();

@@ -34,7 +34,6 @@ export default function AssetPage(props: Params) {
               {asset.lockedBy && (
                 <>
                   <span className="mx-1 text-gray-600">•</span>
-                  {/* Refactored: border-default */}
                   <span className="rounded border border-default px-1 text-xs text-gray-300">
                     Locked by {asset.lockedBy}
                   </span>
@@ -56,11 +55,9 @@ export default function AssetPage(props: Params) {
         </div>
         
         {compareMode && (
-             // Refactored: border-default
              <div className="mt-4 pt-4 border-t border-default flex items-center gap-4 animate-in slide-in-from-top-2">
                 <div className="flex items-center gap-2 text-sm">
                     <span className="text-red-400 font-medium">Base:</span>
-                    {/* Refactored: bg-background, border-default */}
                     <select 
                         className="bg-background border border-default rounded px-2 py-1 text-gray-200"
                         value={targetVersion}
@@ -74,7 +71,6 @@ export default function AssetPage(props: Params) {
                 <div className="text-gray-500">vs</div>
                 <div className="flex items-center gap-2 text-sm">
                     <span className="text-green-400 font-medium">Head:</span>
-                    {/* Refactored: bg-background, border-default */}
                     <span className="bg-background border border-default rounded px-2 py-1 text-gray-400 cursor-not-allowed">
                         Current
                     </span>
@@ -85,7 +81,6 @@ export default function AssetPage(props: Params) {
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 min-h-0 flex-1">
         <div className="flex flex-col gap-4 min-h-0">
-          {/* Refactored: bg-background */}
           <Card className="p-3 flex-1 min-h-0 bg-background flex flex-col justify-center">
             {compareMode ? (
                 <DiffViewer 
@@ -101,7 +96,6 @@ export default function AssetPage(props: Params) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
             <Card className="p-3">
               <SectionTitle>Metadata</SectionTitle>
-              {/* Refactored: divide-default */}
               <div className="mt-2 divide-y divide-default">
                 <KeyRow k="Type" v={asset.type} />
                 <KeyRow 
@@ -125,7 +119,6 @@ export default function AssetPage(props: Params) {
               <SectionTitle>Versions</SectionTitle>
               <ul className="mt-2 space-y-2 max-h-40 overflow-y-auto pr-2">
                 {asset.versions.map((v) => (
-                  // Refactored: border-default, bg-background
                   <li key={v.id} className="flex items-center justify-between rounded-md border border-default bg-background px-3 py-2 text-sm text-gray-200">
                     <span className={v.id === asset.versions[0].id ? "text-green-400 font-medium" : ""}>
                         {v.label} {v.id === asset.versions[0].id && "(Current)"}
@@ -133,7 +126,6 @@ export default function AssetPage(props: Params) {
                     <div className="flex items-center gap-2 text-gray-400">
                       <span>{new Date(v.date).toLocaleDateString()}</span>
                       {!compareMode && (
-                          // Refactored: border-default
                           <button 
                             onClick={() => { setCompareMode(true); setTargetVersion(v.id); }}
                             className="text-xs border border-default rounded px-2 py-1 hover:bg-white/5"

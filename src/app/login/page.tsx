@@ -25,9 +25,7 @@ export default function LoginPage() {
   }, 1000);};
 
   return (
-    // Refactored: bg-background
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      {/* Refactored: bg-card, border-default */}
       <Card className="w-full max-w-md p-8 space-y-8 bg-card border-default">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-white">Checkpoint</h1>

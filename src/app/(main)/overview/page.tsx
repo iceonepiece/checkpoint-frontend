@@ -7,7 +7,6 @@ import Link from "next/link";
 
 export default function OverviewPage() {
   return (
-    // Refactored: bg-background
     <div className="flex-1 min-h-0 overflow-y-auto bg-background">
       <div className="p-6 space-y-6 max-w-screen-xl mx-auto">
         
@@ -26,7 +25,6 @@ export default function OverviewPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {PROJECT_STATS.map((stat) => (
-            // Refactored: bg-background
             <Card key={stat.label} className="p-4 bg-background">
                 <div className="text-sm text-gray-400">{stat.label}</div>
                 <div className="mt-1 text-2xl font-bold text-gray-100">{stat.value}</div>
@@ -44,11 +42,9 @@ export default function OverviewPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-sm font-semibold text-gray-200">Recent Activity</h3>
-                {/* Refactored: border-default */}
                 <div className="space-y-0 relative border-l-2 border-default ml-3 pl-6 pb-2">
                     {RECENT_ACTIVITY.map((item) => (
                         <div key={item.id} className="mb-6 relative">
-                            {/* Refactored: bg-default, border-background */}
                             <div className="absolute -left-[31px] top-1 size-3 rounded-full bg-default border-2 border-background" />
                             <div className="flex items-start gap-3">
                                 <div className="size-8 rounded-full bg-blue-900/50 border border-blue-800 flex items-center justify-center text-xs font-bold text-blue-200 shrink-0">
@@ -86,7 +82,6 @@ export default function OverviewPage() {
                             <div className="text-xs text-gray-500">Collaborator</div>
                         </div>
                     </div>
-                    {/* Refactored: border-default */}
                     <div className="pt-2 border-t border-default">
                         <button className="text-xs text-blue-400 hover:underline w-full text-left">
                             + Invite people

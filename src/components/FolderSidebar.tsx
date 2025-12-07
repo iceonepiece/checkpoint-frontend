@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { TreeNode } from "@/lib/mockFolderTree";
 import { MOCK_TREE } from "@/lib/mockFolderTree";
-import { Icon } from "@/components/Icon"; // Refactored Import
+import { Icon } from "@/components/Icon"; 
 
 function Caret({ open }: { open: boolean }) {
   return <svg className={`h-3 w-3 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>;
@@ -32,12 +32,10 @@ function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentP
 
   return (
     <div>
-      {/* Row Container */}
       <div
         className={`flex w-full items-center gap-0.5 rounded-md py-0.5 pr-2 text-sm transition-colors ${selected ? "bg-card-hover text-white font-medium" : "text-gray-400 hover:bg-card-hover hover:text-gray-200"}`}
         style={{ paddingLeft: 6 + depth * 20 }}
       >
-        {/* Zone 1: Expand/Collapse Arrow */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -52,7 +50,6 @@ function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentP
           {isFolder ? <Caret open={open} /> : <div className="size-3" />}
         </button>
 
-        {/* Zone 2: Navigation */}
         <button
           onClick={() => onSelect(node, fullPath)}
           className="flex flex-1 items-center gap-2 truncate px-1 py-1 text-left rounded-sm cursor-pointer"
@@ -62,7 +59,6 @@ function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentP
         </button>
       </div>
 
-      {/* Children */}
       {isFolder && open && (
         <div>
           {node.children!.map((child) => (
@@ -93,16 +89,18 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
   };
 
   return (
-    // Refactored: border-default, bg-background
-    <aside className="hidden w-72 shrink-0 flex-col border-r border-default bg-background md:flex">
+    <aside className="hidden w-72 shrink-0 flex-col border-r border-default bg-sidebar md:flex">
       <div className="p-4 border-b border-default mb-2">
         <div className="flex items-center justify-between">
            <div className="text-sm font-semibold text-gray-200">Directories</div>
         </div>
         
         <div className="mt-3 relative group">
-            {/* Refactored: Used 'input-base' class instead of manual styles */}
-            <input type="text" placeholder="Filter folders..." className="input-base pl-8 text-xs bg-card border-default" />
+            <input 
+              type="text" 
+              placeholder="Filter folders..." 
+              className="input-base pl-8 text-xs bg-card border-default" 
+            />
             <Icon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-500 group-focus-within:text-blue-400"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></Icon>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Card, Button } from "@/components/ui";
 import { MOCK_ISSUES } from "@/lib/mockIssues";
-import { Icon } from "@/components/Icon"; // Refactored Import
+import { Icon } from "@/components/Icon";
 
 function IssueIcon({ status }: { status: string }) {
   if (status === "open") {
@@ -25,7 +25,6 @@ export default function IssuesPage() {
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <div className="flex-1 w-full flex gap-2">
                 <div className="flex-1 relative">
-                    {/* Refactored: input-base */}
                     <input 
                         type="text" 
                         defaultValue="is:issue state:open" 
@@ -41,7 +40,6 @@ export default function IssuesPage() {
             <Button variant="primary">New issue</Button>
         </div>
 
-        {/* Refactored: border-default, bg-card */}
         <Card className="overflow-hidden border-default bg-card">
             {/* List Header */}
             <div className="flex items-center gap-4 p-4 border-b border-default bg-card text-sm">
@@ -66,7 +64,6 @@ export default function IssuesPage() {
             {/* List Items */}
             <div className="divide-y divide-default">
                 {MOCK_ISSUES.map(issue => (
-                    // Refactored: hover:bg-card-hover
                     <div key={issue.id} className="group flex items-start gap-3 p-3 sm:px-4 hover:bg-card-hover">
                         <div className="mt-1">
                             <IssueIcon status={issue.status} />

@@ -3,7 +3,7 @@
 import { use } from "react";
 import { MOCK_ISSUES } from "@/lib/mockIssues";
 import { Button, Card } from "@/components/ui";
-import { Icon } from "@/components/Icon"; // Refactored Import
+import { Icon } from "@/components/Icon";
 import Link from "next/link";
 
 type Params = { params: Promise<{ id: string }> };
@@ -17,7 +17,6 @@ export default function IssueDetailPage(props: Params) {
     <div className="w-full h-full overflow-y-auto">
       <div className="p-6 max-w-screen-xl mx-auto">
         
-        {/* Refactored: border-default */}
         <div className="border-b border-default pb-4 mb-6">
             <div className="flex justify-between items-start gap-4">
                 <div className="space-y-1">
@@ -55,7 +54,6 @@ export default function IssueDetailPage(props: Params) {
 
                 {issue.replies.length > 0 && (
                     <div className="relative py-2">
-                        {/* Refactored: border-default */}
                         <div className="absolute inset-0 flex items-center" aria-hidden="true">
                             <div className="w-full border-t border-default/50" />
                         </div>
@@ -74,7 +72,6 @@ export default function IssueDetailPage(props: Params) {
                 ))}
 
                 <div className="flex gap-4">
-                    {/* Refactored: border-default */}
                     <div className="size-10 rounded-full bg-gray-700 shrink-0 border border-default" />
                     <Card className="flex-1 bg-background border-default">
                         <div className="p-2 border-b border-default bg-card rounded-t-lg flex gap-4 text-xs text-gray-400">
@@ -107,18 +104,15 @@ export default function IssueDetailPage(props: Params) {
   );
 }
 
-// --- Sub-components ---
 function CommentItem({ author, date, avatar, body, isOwner }: any) {
     return (
         <div className="flex gap-4 group">
-            {/* Refactored: border-default */}
+
             <div className="size-10 rounded-full bg-gray-700 shrink-0 border border-default flex items-center justify-center text-xs text-gray-300 font-bold overflow-hidden">
                 {avatar.length <= 2 ? avatar : <img src={avatar} alt="" className="w-full h-full object-cover"/>}
             </div>
             
-            {/* Refactored: border-default, bg-background */}
             <Card className="flex-1 border-default bg-background">
-                {/* Refactored: border-default, bg-card */}
                 <div className="flex items-center gap-2 p-3 border-b border-default bg-card text-xs text-gray-400 rounded-t-lg">
                     <span className="font-semibold text-gray-200">{author}</span>
                     <span>commented {date}</span>
@@ -141,7 +135,6 @@ function CommentItem({ author, date, avatar, body, isOwner }: any) {
 
 function SidebarSection({ title, empty }: { title: string, empty: string }) {
     return (
-        // Refactored: border-default
         <div className="pb-4 border-b border-default last:border-0">
             <div className="flex items-center justify-between text-gray-400 mb-1 hover:text-blue-400 cursor-pointer group">
                 <span className="font-semibold text-xs group-hover:text-blue-400">{title}</span>

@@ -13,12 +13,12 @@ export default function Breadcrumbs({ items }: { items: Crumb[] }) {
           {c.href ? (
             <Link
               href={c.href}
-              className="rounded px-1 py-0.5 text-gray-300 hover:bg-white/5 hover:text-gray-100"
+              className="rounded px-2 py-1 text-gray-400 hover:bg-card-hover hover:text-foreground transition-colors"
             >
               {c.label}
             </Link>
           ) : (
-            <span className="px-1 py-0.5 font-medium text-gray-100">{c.label}</span>
+            <span className="px-2 py-1 font-medium text-foreground">{c.label}</span>
           )}
         </div>
       ))}

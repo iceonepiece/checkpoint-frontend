@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { Button, Card } from "@/components/ui";
-import { Icon } from "@/components/Icon"; // Refactored Import
+import { Icon } from "@/components/Icon";
 import { MOCK_FILES } from "@/lib/mockFiles";
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
 
@@ -66,7 +66,6 @@ function Kebab() {
 }
 
 /* ---------- CARD COMPONENTS ---------- */
-
 function DriveCard({ file, selected, onToggle, size }: any) {
   const badge = mimeBadge(file.type);
   const aspectClass = size === "comfortable" ? "aspect-[4/3]" : "aspect-video";
@@ -97,14 +96,12 @@ function DriveCard({ file, selected, onToggle, size }: any) {
         <Kebab />
       </button>
 
-      {/* Refactored: bg-[#0d1117] -> bg-background */}
       <div className={`${aspectClass} w-full bg-background relative`}>
         {file.isFolder ? (
           <div className="h-full w-full grid place-items-center text-gray-500">
             <Icon className="size-8"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
           </div>
         ) : file.thumb && file.type.startsWith("image/") ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={file.thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="h-full w-full grid place-items-center text-gray-500">
@@ -121,7 +118,6 @@ function DriveCard({ file, selected, onToggle, size }: any) {
         )}
       </div>
 
-      {/* Refactored: bg-[#161b22] -> bg-card */}
       <div className="relative z-10 flex items-center gap-2 px-3 py-2 bg-card">
         <span className={`inline-block size-2 rounded-full ${badge.dot}`} />
         <div className="min-w-0 flex-1">
@@ -141,11 +137,9 @@ function DriveRow({ file, selected, onToggle }: any) {
   const isLocked = !!file.lockedBy;
 
   return (
-    // Refactored: bg-[#1c2128] -> bg-card-hover, border-[#30363d] -> border-default
     <div className={`group grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] items-center gap-3 px-2 py-2 hover:bg-card-hover border-b border-default/50 last:border-0 ${selected ? "bg-card-hover" : ""}`}>
       <input type="checkbox" className="size-4 accent-blue-500" checked={selected} onChange={onToggle} />
       <div className="flex min-w-0 items-center gap-3">
-        {/* Refactored: bg-[#0d1117] -> bg-background */}
         <div className="grid size-8 place-items-center rounded-md bg-background text-gray-400 border border-default relative">
           {file.isFolder ? (
              <Icon className="size-4"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
@@ -195,7 +189,6 @@ function SelectionBar({ count, onLock, clear }: any) {
 }
 
 /* ---------- MAIN EXPORT ---------- */
-
 export default function FileBrowser() {
   const [view, setView] = useState<ViewMode>("grid");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -204,7 +197,7 @@ export default function FileBrowser() {
   const currentPath = searchParams.get("path") || "assets"; 
   const currentFolderId = currentPath.split("/").pop() || "assets";
 
-  // 1. Get Subfolders
+  // Get Subfolders
   const folderNode = findNode(MOCK_TREE, currentFolderId);
   const subFolders = folderNode?.children?.map(child => ({
       id: child.id,
@@ -216,7 +209,7 @@ export default function FileBrowser() {
       currentPath: currentPath 
   })) || [];
 
-  // 2. Get Files
+  // Get Files
   const currentFiles = MOCK_FILES.filter(f => f.folderId === currentFolderId).map(f => ({
       ...f,
       currentPath: currentPath 
@@ -235,7 +228,6 @@ export default function FileBrowser() {
         <Breadcrumbs items={getBreadcrumbs(currentPath, MOCK_TREE)} />
         
         <div className="flex items-center gap-2">
-           {/* Refactored: border-default, bg-background */}
            <div className="flex items-center rounded-md border border-default bg-background p-1">
             <button onClick={() => setView("grid")} className={`p-1.5 rounded ${view === "grid" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white"}`}>
                <Icon className="size-4"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></Icon>
@@ -271,7 +263,6 @@ export default function FileBrowser() {
         </div>
       ) : (
         <Card className="flex flex-col">
-          {/* Refactored: border-default */}
           <div className="grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] gap-3 px-4 py-3 border-b border-default text-xs font-semibold text-gray-400 uppercase tracking-wider">
              <span className="w-4" />
              <span>Name</span>
