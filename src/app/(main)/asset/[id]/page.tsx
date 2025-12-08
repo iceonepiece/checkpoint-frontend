@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Asset } from "@/lib/mockAssets"; 
+import { Asset, Comment } from "@/lib/mockAssets"; 
 import AssetPreview from "@/components/AssetPreview";
 import DiffViewer from "@/components/DiffViewer";
 import ReviewPanel from "@/components/ReviewPanel";
@@ -12,6 +12,13 @@ import Link from "next/link";
 import { useRepo } from "@/lib/RepoContext";
 
 type Params = { params: Promise<{ id: string }> };
+
+// --- HELPER: Status Mapping ---
+const STATUS_MAP: Record<number, "Pending" | "Approved" | "Needs changes"> = {
+  0: "Pending",
+  1: "Approved",
+  2: "Needs changes"
+};
 
 function getFileType(fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase();
@@ -42,23 +49,51 @@ export default function AssetPage(props: Params) {
     async function loadAssetData() {
         if (!currentRepo) return;
         setLoading(true);
+        setError("");
+
         try {
-            // 1. Fetch Current Content
-            const resContent = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}?path=${filePath}`);
+            const baseUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}`;
             
-            // FIXED: Handle 404 gracefully (happens during repo switch)
-            if (resContent.status === 404) {
+            // 1. Fetch Metadata (Git Content)
+            const resMeta = await fetch(`${baseUrl}?path=${filePath}`);
+            if (resMeta.status === 404) {
                 setError("File not found in this repository");
                 setLoading(false);
                 return;
             }
+            if (!resMeta.ok) throw new Error("Failed to fetch file metadata");
+            const metaData = await resMeta.json();
 
-            if (!resContent.ok) throw new Error("Failed to fetch file details");
-            const contentData = await resContent.json();
+            // 2. Fetch DB Info (Status & Comments)
+            let infoData = { status: "Pending", comments: [] };
+            try {
+                const resInfo = await fetch(`${baseUrl}/info?path=${filePath}`);
+                if (resInfo.ok) {
+                    const data = await resInfo.json();
+                    
+                    // FIXED: Map integer status to string
+                    const statusInt = data.status ?? 0;
+                    const statusStr = STATUS_MAP[statusInt] || "Pending";
 
-            // 2. Fetch Versions
-            const resVersions = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/versions?path=${filePath}`);
-            const versionData = await resVersions.json();
+                    const dbComments = data.comments?.map((c: any) => ({
+                        id: c.comment_id,
+                        user: "User", 
+                        text: c.message,
+                        date: new Date(c.created_at).toLocaleDateString()
+                    })) || [];
+                    
+                    infoData = {
+                        status: statusStr,
+                        comments: dbComments
+                    };
+                }
+            } catch (err) {
+                console.warn("Could not fetch additional info (file might not be tracked yet).");
+            }
+
+            // 3. Fetch Version History
+            const resVersions = await fetch(`${baseUrl}/versions?path=${filePath}`);
+            const versionData = resVersions.ok ? await resVersions.json() : [];
 
             const mappedVersions = Array.isArray(versionData) ? versionData.map((v: any) => ({
                 id: v.sha,
@@ -69,24 +104,23 @@ export default function AssetPage(props: Params) {
                 sizeBytes: v.size
             })) : [];
 
-            // 3. Construct Asset
+            // 4. Construct Final Asset Object
             setAsset({
-                id: contentData.sha,
-                name: contentData.name,
-                type: getFileType(contentData.name),
-                sizeBytes: contentData.size,
+                id: metaData.sha,
+                name: metaData.name,
+                type: getFileType(metaData.name),
+                sizeBytes: metaData.size,
                 modifiedAt: mappedVersions[0]?.date || new Date().toISOString(), 
-                thumb: contentData.download_url,
+                thumb: metaData.download_url,
                 versions: mappedVersions, 
-                status: "Pending",
-                comments: [],      
+                status: infoData.status as any, // "Pending" | "Approved" | "Needs changes"
+                comments: infoData.comments,      
                 lockedBy: undefined 
             });
             
             if (mappedVersions.length > 1) {
                 setTargetVersionId(mappedVersions[1].id);
             }
-            setError(""); // Clear any previous errors
 
         } catch (err: any) {
             console.error(err);
@@ -98,14 +132,13 @@ export default function AssetPage(props: Params) {
     loadAssetData();
   }, [currentRepo, filePath]);
 
-  // --- Handlers ---
   const handleStatusChange = (newStatus: "Needs changes" | "Pending" | "Approved") => {
       if(asset) setAsset({ ...asset, status: newStatus });
   };
 
   const handleAddComment = (text: string) => {
       if(!asset) return;
-      const newComment = { id: `c_${Date.now()}`, user: "Me", text: text, date: "Just now" };
+      const newComment = { id: `temp_${Date.now()}`, user: "Me", text: text, date: "Just now" };
       setAsset({ ...asset, comments: [...asset.comments, newComment] });
   };
 
@@ -126,7 +159,6 @@ export default function AssetPage(props: Params) {
   if (!currentRepo) return <div className="p-10 text-gray-500">Loading repository context...</div>;
   if (loading) return <div className="p-10 text-gray-500">Loading asset details...</div>;
   
-  // FIXED: Better Error UI with back button
   if (error || !asset) return (
     <div className="flex flex-col items-center justify-center p-10 space-y-4">
         <div className="text-red-400">Error: {error}</div>
