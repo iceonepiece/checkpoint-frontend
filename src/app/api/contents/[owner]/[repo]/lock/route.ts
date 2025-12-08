@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticate } from "@/lib/auth"; // your reusable helper
+import { authenticate } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { isFileObject } from "@/lib/helpers";  
 
 export async function POST(
   req: NextRequest,
-  context: { params: { owner: string; repo: string } }
+  context: { params: Promise<{ owner: string; repo: string }> } // 1. Update Type
 ) {
-  // 1. Authenticate user
   const auth = await authenticate();
 
   if (!auth.ok) {
@@ -17,17 +16,15 @@ export async function POST(
 
   const { octokit } = auth;
 
-  // 2. Extract route params
-  const { owner, repo } = context.params;
+  // 2. Await Params
+  const { owner, repo } = await context.params;
 
-  // 3. Extract query parameters
   const search = req.nextUrl.searchParams;
   const path = search.get("path") ?? "";
   const branch = search.get("branch") ?? "main";
   const isLocked = search.get("is_locked") ?? true;
 
   try {
-
     const { data: contentData } = await octokit.rest.repos.getContent({
         owner,
         repo,
@@ -36,10 +33,7 @@ export async function POST(
     });
 
     if (isFileObject(contentData)) {
-        const { data: repoData } = await octokit.rest.repos.get({
-            owner,
-            repo
-        });
+        const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
     
         const repoId = repoData.id;
         const cookieStore = await cookies(); 
@@ -52,7 +46,7 @@ export async function POST(
             .eq("path", path)
             .single();
 
-        if (error) {
+        if (error && error.code !== 'PGRST116') { // Ignore "no rows found" error
             console.error("Error:", error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
@@ -63,7 +57,7 @@ export async function POST(
                 .insert({
                     file_id: fileRow.file_id,
                     is_locked: isLocked,
-                    github_id: auth.userId
+                    github_id: auth.user.id // Fixed: use auth.user.id not auth.userId
                 });
 
             if (lockError) {
@@ -72,11 +66,8 @@ export async function POST(
             }  
         }
 
-
-        return NextResponse.json({ text: 'successfully'});
-    }
-    else
-    {
+        return NextResponse.json({ text: 'successfully updated lock'});
+    } else {
         return NextResponse.json({ error: "This path is not a valid file" }, { status: 400 });
     }
   } catch (err: any) {

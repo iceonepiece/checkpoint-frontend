@@ -1,22 +1,37 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
  
-// This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
   const sessionToken = request.cookies.get("session")?.value;
+  const { pathname } = request.nextUrl;
 
-  console.log("Middleware is called with session: " + sessionToken);
+  // 1. If user is on Login page but HAS a session, send them to Dashboard
+  if (pathname === "/login" && sessionToken) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // 2. If user is on a Protected page but NO session
+  if (!sessionToken) {
+    // ALLOW: Login page
+    if (pathname === "/login") {
+      return NextResponse.next();
+    }
+    
+    // ALLOW: Auth API routes (This is the fix!)
+    // This allows /api/auth/github and /api/auth/github/callback to run
+    if (pathname.startsWith("/api/auth")) {
+      return NextResponse.next();
+    }
+
+    // BLOCK: Redirect everything else to Login
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
 
   return NextResponse.next();
 }
  
 export const config = { 
   matcher: [    
-    /*     * Match all request paths except for the ones starting with:     
-    * - _next/static (static files)     
-    * - _next/image (image optimization files)     
-    * * - favicon.ico (favicon file)     
-    * * Feel free to modify this pattern to include more paths.     
-    * */    
-   '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',], 
-  }
+   '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ], 
+}

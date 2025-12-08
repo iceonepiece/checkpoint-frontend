@@ -1,20 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+// Removed imports for useEffect, useRouter, and localStorage logic
 import FileBrowser from "@/components/FileBrowser";
 import FolderSidebar from "@/components/FolderSidebar";
 
 export default function Page() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-    if (!isLoggedIn) {
-      router.push("/login");
-    }
-  }, [router]);
-
+  // Middleware handles the protection now! 
+  
   return (
     <div className="flex h-full">
       <FolderSidebar />

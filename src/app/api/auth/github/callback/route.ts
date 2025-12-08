@@ -3,46 +3,56 @@ import { Octokit } from "octokit";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { authenticate } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
+  // 1. Check if a session already exists via Cookie directly (faster/safer)
+  const cookieStore = await cookies();
+  const existingSession = cookieStore.get("session")?.value;
 
-  const auth = await authenticate();
-    
-  if (auth.ok) {
-    return NextResponse.json({ text: "Already logged in" }, { status: 200 });
+  if (existingSession) {
+    // If we have a session, assume we are good and go Home
+    return NextResponse.redirect(new URL('/', req.url));
   }
 
   try {
     const searchParams = req.nextUrl.searchParams;
     const code = searchParams.get('code') ?? "";
 
+    if (!code) {
+        throw new Error("No code received from GitHub");
+    }
+
+    // 2. Exchange Code for Token
     const { authentication } = await oauthApp.createToken({ code });
     const accessToken = authentication.token;
 
-    // 2. Use the token to fetch the authenticated user's info
+    // 3. Fetch User Info from GitHub
     const octokit = new Octokit({ auth: accessToken });
     const { data: user } = await octokit.rest.users.getAuthenticated();
 
-    const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
-    const { data: userRecord, error } = await supabase
+    // 4. Upsert User into DB
+    const { error: userError } = await supabase
       .from('users')
-      .upsert({ github_id: user.id, username: user.login, avatar_url: user.avatar_url })
+      .upsert({ 
+        github_id: user.id, 
+        username: user.login, 
+        avatar_url: user.avatar_url 
+      })
       .select()
-      .single()
+      .single();
       
-    if (error) {
-      console.error("Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (userError) {
+      console.error("DB Error (User):", userError);
+      // Redirect to login with error flag
+      return NextResponse.redirect(new URL('/login?error=db_user_error', req.url));
     }
-    
 
+    // 5. Create Session
     const sessionToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 days
 
-    // 6. Save session in DB
     const { error: sessionError } = await supabase.from("sessions").insert({
       session_token: sessionToken,
       github_id: user.id,
@@ -50,17 +60,18 @@ export async function GET(req: NextRequest) {
     });
 
     if (sessionError) {
-      console.error("Session insert error:", sessionError);
-      return NextResponse.json({ error: sessionError.message }, { status: 500 });
+      console.error("DB Error (Session):", sessionError);
+      return NextResponse.redirect(new URL('/login?error=db_session_error', req.url));
     }
 
-    const response = NextResponse.json({status:200});
+    // 6. Success! Redirect to Home
+    const response = NextResponse.redirect(new URL('/', req.url));
 
     response.cookies.set({
       name: "session",
       value: sessionToken,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       expires: expiresAt,
@@ -69,7 +80,8 @@ export async function GET(req: NextRequest) {
     return response;
 
   } catch (err) {
-    console.error("Error:", err);
-    return NextResponse.json({ error: err }, { status: 500 });
+    console.error("Callback Error:", err);
+    // General error -> Send back to login
+    return NextResponse.redirect(new URL('/login?error=auth_callback_failed', req.url));
   }
 }

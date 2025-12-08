@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticate } from "@/lib/auth"; // your reusable helper
+import { authenticate } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { owner: string; repo: string } }
+  context: { params: Promise<{ owner: string; repo: string }> } // 1. Type is now Promise
 ) {
-  // 1. Authenticate user
   const auth = await authenticate();
 
   if (!auth.ok) {
@@ -14,16 +13,14 @@ export async function GET(
 
   const { octokit } = auth;
 
-  // 2. Extract route params
-  const { owner, repo } = context.params;
+  // 2. Await the params before using them
+  const { owner, repo } = await context.params;
 
-  // 3. Extract query parameters
   const search = req.nextUrl.searchParams;
   const path = search.get("path") ?? "";
   const branch = search.get("branch") ?? "main";
 
   try {
-    // 4. Fetch GitHub repo contents
     const { data } = await octokit.rest.repos.getContent({
       owner,
       repo,

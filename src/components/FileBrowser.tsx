@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { Button, Card } from "@/components/ui";
 import { Icon } from "@/components/Icon"; 
-import { MOCK_FILES, type FileItem } from "@/lib/mockFiles";
+import { type FileItem } from "@/lib/mockFiles"; 
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
+import { useRepo } from "@/lib/RepoContext"; // Import Context
 
-// IMPORTS: file-browser components
+// IMPORTS: components
 import { AssetCard } from "./file-browser/AssetCard";
 import { AssetRow } from "./file-browser/AssetRow";
 import { FolderCard } from "./file-browser/FolderCard";
@@ -19,7 +20,17 @@ import { MoveModal } from "./file-browser/modals/MoveModal";
 
 type ViewMode = "grid" | "list";
 
-/* ---------- UTILITIES ---------- */
+// ... (Keep existing Utilities: getFileType, findNode, getBreadcrumbs) ...
+function getFileType(fileName: string, type: string) {
+  if (type === "dir") return "folder";
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) return "image/" + ext;
+  if (['mp4', 'mov', 'avi', 'webm'].includes(ext || '')) return "video/" + ext;
+  if (['pdf'].includes(ext || '')) return "application/pdf";
+  if (['fbx', 'obj', 'blend', 'glb', 'gltf'].includes(ext || '')) return "model/" + ext;
+  return "file";
+}
+
 function findNode(nodes: TreeNode[], id: string): TreeNode | undefined {
   for (const node of nodes) {
     if (node.id === id) return node;
@@ -31,39 +42,29 @@ function findNode(nodes: TreeNode[], id: string): TreeNode | undefined {
   return undefined;
 }
 
-function getInitialFolderLocks(nodes: TreeNode[]) {
-  let locks: Record<string, { lockedBy: string; lockedAt: string }> = {};
-  function traverse(list: TreeNode[]) {
-    list.forEach(node => {
-      if (node.lockedBy) {
-        locks[node.id] = { lockedBy: node.lockedBy, lockedAt: node.lockedAt || "" };
-      }
-      if (node.children) traverse(node.children);
-    });
-  }
-  traverse(nodes);
-  return locks;
-}
-
 function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
+  const rootCrumb = { label: "Root", href: "/" };
   if (!pathStr) return [{ label: "Root" }];
   const ids = pathStr.split("/");
-  return ids.map((id, index) => {
+  const pathCrumbs = ids.map((id, index) => {
     const node = findNode(tree, id);
     const label = node ? node.name : id;
     const hrefPath = ids.slice(0, index + 1).join("/");
     return { label, href: `/?path=${hrefPath}` };
   });
+  return [rootCrumb, ...pathCrumbs];
 }
 
 /* ---------- MAIN COMPONENT ---------- */
 export default function FileBrowser() {
   const [view, setView] = useState<ViewMode>("grid");
-  const [files, setFiles] = useState<FileItem[]>(MOCK_FILES);
-  const [folderLocks, setFolderLocks] = useState<Record<string, { lockedBy: string; lockedAt: string }>>(
-    getInitialFolderLocks(MOCK_TREE)
-  );
   
+  // Use Global Repo Context
+  const { currentRepo } = useRepo();
+
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [loading, setLoading] = useState(false); // Default to false, controlled by fetch
+  const [error, setError] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   
   // Modal States
@@ -72,124 +73,114 @@ export default function FileBrowser() {
   const [isMoveOpen, setMoveOpen] = useState(false);
   
   const searchParams = useSearchParams();
-  const currentPath = searchParams.get("path") || "assets"; 
-  const currentFolderId = currentPath.split("/").pop() || "assets";
+  const currentPath = searchParams.get("path") || "";
 
-  // Clear selection whenever the path changes
+  // 1. Fetch Files from GitHub API
+  const fetchFiles = useCallback(async () => {
+    // If no repo selected yet, don't fetch
+    if (!currentRepo) return;
+
+    setLoading(true);
+    setError("");
+    try {
+      const endpoint = currentPath 
+        ? `/api/contents/${currentRepo.owner}/${currentRepo.name}?path=${currentPath}`
+        : `/api/contents/${currentRepo.owner}/${currentRepo.name}`;
+
+      const res = await fetch(endpoint);
+      
+      if (!res.ok) throw new Error("Failed to fetch repository contents");
+      
+      const data = await res.json();
+      
+      if (Array.isArray(data)) {
+        const mappedFiles: FileItem[] = data.map((item: any) => {
+          const type = getFileType(item.name, item.type);
+          return {
+            id: item.sha,
+            name: item.name,
+            type: type,
+            sizeBytes: item.size,
+            modifiedAt: new Date().toISOString(), 
+            isFolder: item.type === "dir",
+            path: item.path,
+            thumb: item.download_url
+          };
+        });
+        setFiles(mappedFiles);
+      } else {
+        setFiles([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Could not load repository contents.");
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPath, currentRepo]); // Dependency on currentRepo ensures re-fetch on switch
+
   useEffect(() => {
+    fetchFiles();
     setSelected({});
-  }, [currentPath]);
+  }, [fetchFiles]);
 
-  // Get Subfolders
-  const folderNode = findNode(MOCK_TREE, currentFolderId);
-  const subFolders = folderNode?.children?.map(child => {
-      const lockData = folderLocks[child.id];
-      return {
-        id: child.id,
-        name: child.name,
-        type: "folder",
-        sizeBytes: 0,
-        modifiedAt: new Date().toISOString(),
-        isFolder: true,
-        path: currentPath ? `${currentPath}/${child.id}` : child.id,
-        lockedBy: lockData?.lockedBy,
-        lockedAt: lockData?.lockedAt,
-        thumb: undefined
-      };
-  }) || [];
-
-  // Get Files
-  const currentFiles = files.filter(f => f.folderId === currentFolderId).map(f => ({
-      ...f,
-      currentPath: currentPath 
-  }));
-
-  const displayItems = [...subFolders, ...currentFiles];
+  const subFolders = files.filter(f => f.isFolder);
+  const currentFiles = files.filter(f => !f.isFolder);
 
   const toggleOne = (id: string) => setSelected((s) => ({ ...s, [id]: !s[id] }));
   const clearSelection = () => setSelected({});
 
-  // Handlers (Delete, Move, Download, Lock, Upload)
-  const handleDelete = (message: string) => {
-    const selectedIds = Object.keys(selected).filter(k => selected[k]);
-    setFiles(prev => prev.filter(f => !selectedIds.includes(f.id))); 
+  // ... (Keep Handlers: handleDelete, handleMove, handleDownload, handleLock, handleUpload) ...
+  const handleDelete = async (message: string) => {
+    alert("Delete logic here");
+    setDeleteOpen(false);
     clearSelection();
   };
-
-  const handleMove = (targetFolderId: string, message: string) => {
-    const selectedIds = Object.keys(selected).filter(k => selected[k]);
-    setFiles(prev => prev.map(f => {
-        if (selectedIds.includes(f.id)) return { ...f, folderId: targetFolderId };
-        return f;
-    }));
+  const handleMove = async (targetId: string, message: string) => {
+    alert("Move logic here");
+    setMoveOpen(false);
     clearSelection();
   };
-
   const handleDownload = () => {
     const selectedIds = Object.keys(selected).filter(k => selected[k]);
-    const itemsToDownload = displayItems.filter(item => selectedIds.includes(item.id));
+    const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
     itemsToDownload.forEach(item => {
-        if (item.isFolder) { alert(`Cannot download folder "${item.name}"`); return; }
+        if (item.isFolder) return;
         const link = document.createElement("a");
-        if (item.thumb?.startsWith("blob:") || item.thumb?.startsWith("/")) {
-             link.href = item.thumb;
-        } else {
-             const dummyContent = `Content for ${item.name}.\nSize: ${item.sizeBytes}\nPath: ${item.path}`;
-             const blob = new Blob([dummyContent], { type: "text/plain" });
-             link.href = URL.createObjectURL(blob);
-        }
+        link.href = item.thumb || "#";
         link.download = item.name;
+        link.target = "_blank"; 
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     });
     clearSelection();
   };
-
   const handleLock = () => {
-    const selectedIds = Object.keys(selected).filter(k => selected[k]);
-    setFiles(prev => prev.map(f => {
-      if (selectedIds.includes(f.id)) {
-        const isLocked = !!f.lockedBy;
-        return { ...f, lockedBy: isLocked ? undefined : "Me", lockedAt: isLocked ? undefined : new Date().toISOString() };
-      }
-      return f;
-    }));
-
-    const visibleFolderIds = subFolders.map(f => f.id);
-    const targetFolders = selectedIds.filter(id => visibleFolderIds.includes(id));
-    
-    if (targetFolders.length > 0) {
-        setFolderLocks(prev => {
-            const next = { ...prev };
-            targetFolders.forEach(id => {
-                if (next[id]) delete next[id];
-                else next[id] = { lockedBy: "Me", lockedAt: new Date().toISOString() };
-            });
-            return next;
-        });
-    }
+    alert("Locking logic here");
     clearSelection();
   };
-
   const handleUpload = async (file: File, message: string, description: string) => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const newFile: FileItem = {
-      id: `new_${Date.now()}`,
-      name: file.name,
-      type: file.type || "unknown",
-      sizeBytes: file.size,
-      modifiedAt: new Date().toISOString(),
-      thumb: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
-      isFolder: false,
-      path: currentPath ? `${currentPath}/${file.name}` : file.name,
-      folderId: currentFolderId,
-    };
-    setFiles((prev) => [...prev, newFile]);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("message", message);
+    await fetch("/api/upload", { method: "POST", body: formData });
+    fetchFiles();
   };
+
+  if (!currentRepo) {
+      return (
+          <div className="flex-1 flex flex-col items-center justify-center p-10 text-gray-500">
+              <Icon className="size-12 mb-4 opacity-50"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></Icon>
+              <p className="text-lg font-medium text-gray-400">No repository selected</p>
+              <p className="text-sm">Please select a repository from the top menu to view files.</p>
+          </div>
+      );
+  }
 
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0 overflow-y-auto">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <Breadcrumbs items={getBreadcrumbs(currentPath, MOCK_TREE)} />
         
@@ -219,7 +210,11 @@ export default function FileBrowser() {
       />
 
       {/* Grid / List */}
-      {subFolders.length === 0 && currentFiles.length === 0 ? (
+      {loading ? (
+         <div className="flex justify-center py-20 text-gray-500">Loading contents...</div>
+      ) : error ? (
+         <div className="flex justify-center py-20 text-red-400">{error}</div>
+      ) : subFolders.length === 0 && currentFiles.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-500">
               <Icon className="size-12 mb-2 opacity-20"><path d="M3 7h5l2 2h11v10H3z"/></Icon>
               <p>This folder is empty</p>

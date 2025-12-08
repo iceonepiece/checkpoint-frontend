@@ -18,7 +18,7 @@ export function SelectionBar({ count, onLock, onMove, onDelete, onDownload, clea
       <div className="font-medium pl-1">{count} selected</div>
       <div className="flex items-center gap-2">
         <Button size="sm" onClick={onDownload}>Download</Button>
-        <Button size="sm" onClick={onMove}>Move</Button>
+        {/* <Button size="sm" onClick={onMove}>Move</Button> */}
         <Button size="sm" onClick={onLock}>Lock / Unlock</Button>
         <Button variant="danger" size="sm" onClick={onDelete}>Delete</Button>
         <div className="w-px h-4 bg-gray-700 mx-1" />

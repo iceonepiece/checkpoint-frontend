@@ -12,6 +12,10 @@ export function AssetCard({ file, selected, onToggle, size }: { file: FileItem, 
   const lockDate = file.lockedAt ? new Date(file.lockedAt).toLocaleString() : "";
   const lockTooltip = isLocked ? `Locked by ${file.lockedBy} on ${lockDate}` : "";
 
+  // Helper to check if it's safe to display as an image
+  // Now we strictly require it to be an image type AND have a thumb URL
+  const showThumbnail = file.thumb && file.type.startsWith("image/");
+
   return (
     <div 
       onClick={onToggle}
@@ -34,7 +38,7 @@ export function AssetCard({ file, selected, onToggle, size }: { file: FileItem, 
 
       {/* Kebab Menu */}
       {/* <button 
-        onClick={(e) => e.stopPropagation()} // Stop bubbling
+        onClick={(e) => e.stopPropagation()} 
         className="absolute right-2 top-2 z-30 rounded-md p-1 text-gray-400 hover:bg-black/50"
       >
         <Kebab />
@@ -46,7 +50,8 @@ export function AssetCard({ file, selected, onToggle, size }: { file: FileItem, 
           <div className="h-full w-full grid place-items-center text-gray-500">
             <Icon className="size-8"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
           </div>
-        ) : file.thumb ? (
+        ) : showThumbnail ? (
+          // FIXED: Only render img if it is actually an image type
           <img src={file.thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="h-full w-full grid place-items-center text-gray-500">
