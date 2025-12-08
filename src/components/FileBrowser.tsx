@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation"; // Added useRouter
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { Button, Card } from "@/components/ui";
 import { Icon } from "@/components/Icon"; 
 import { type FileItem } from "@/lib/mockFiles"; 
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
-import { useRepo } from "@/lib/RepoContext"; // Import Context
+import { useRepo } from "@/lib/RepoContext";
 
 // IMPORTS: components
 import { AssetCard } from "./file-browser/AssetCard";
@@ -57,17 +57,15 @@ function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
 
 /* ---------- MAIN COMPONENT ---------- */
 export default function FileBrowser() {
+  const router = useRouter(); // Added router for fallback navigation
   const [view, setView] = useState<ViewMode>("grid");
-  
-  // Use Global Repo Context
   const { currentRepo } = useRepo();
 
   const [files, setFiles] = useState<FileItem[]>([]);
-  const [loading, setLoading] = useState(false); // Default to false, controlled by fetch
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   
-  // Modal States
   const [isUploadOpen, setUploadOpen] = useState(false);
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [isMoveOpen, setMoveOpen] = useState(false);
@@ -77,7 +75,6 @@ export default function FileBrowser() {
 
   // 1. Fetch Files from GitHub API
   const fetchFiles = useCallback(async () => {
-    // If no repo selected yet, don't fetch
     if (!currentRepo) return;
 
     setLoading(true);
@@ -89,6 +86,17 @@ export default function FileBrowser() {
 
       const res = await fetch(endpoint);
       
+      // FIXED: Handle 404 gracefully (happens during repo switch)
+      if (res.status === 404) {
+        // If the folder doesn't exist in the new repo, go back to root
+        // This prevents the "Error: Failed to fetch" crash
+        console.warn("Path not found in this repo, redirecting to root...");
+        setFiles([]); 
+        setLoading(false);
+        router.push("/"); 
+        return;
+      }
+
       if (!res.ok) throw new Error("Failed to fetch repository contents");
       
       const data = await res.json();
@@ -117,7 +125,7 @@ export default function FileBrowser() {
     } finally {
       setLoading(false);
     }
-  }, [currentPath, currentRepo]); // Dependency on currentRepo ensures re-fetch on switch
+  }, [currentPath, currentRepo, router]);
 
   useEffect(() => {
     fetchFiles();
@@ -178,6 +186,11 @@ export default function FileBrowser() {
       );
   }
 
+  // --- Animation Helper ---
+  const getDelayStyle = (index: number) => ({
+    animationDelay: `${index * 0.05}s`
+  });
+
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0 overflow-y-auto">
       {/* Header */}
@@ -209,7 +222,7 @@ export default function FileBrowser() {
         clear={clearSelection} 
       />
 
-      {/* Grid / List */}
+      {/* Grid / List with STAGGERED Animation */}
       {loading ? (
          <div className="flex justify-center py-20 text-gray-500">Loading contents...</div>
       ) : error ? (
@@ -220,15 +233,19 @@ export default function FileBrowser() {
               <p>This folder is empty</p>
           </div>
       ) : view === "grid" ? (
-        <div className="space-y-6 pb-20">
-          
+        <div 
+            key={currentPath}
+            className="space-y-6 pb-20"
+        >
           {/* SECTION: FOLDERS */}
           {subFolders.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Folders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {subFolders.map((f: any) => (
-                  <FolderCard key={f.id} file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} />
+                {subFolders.map((f: any, i) => (
+                  <div key={f.id} className="opacity-0 animate-fade-in-up" style={getDelayStyle(i)}>
+                    <FolderCard file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} />
+                  </div>
                 ))}
               </div>
             </div>
@@ -239,15 +256,20 @@ export default function FileBrowser() {
             <div>
               {subFolders.length > 0 && <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Files</h3>}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {currentFiles.map((f: any) => (
-                  <AssetCard key={f.id} file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} size="cozy" />
+                {currentFiles.map((f: any, i) => (
+                  <div key={f.id} className="opacity-0 animate-fade-in-up" style={getDelayStyle(subFolders.length + i)}>
+                    <AssetCard file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} size="cozy" />
+                  </div>
                 ))}
               </div>
             </div>
           )}
         </div>
       ) : (
-        <Card className="flex flex-col">
+        <Card 
+            key={currentPath}
+            className="flex flex-col"
+        >
           <div className="grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] gap-3 px-4 py-3 border-b border-default text-xs font-semibold text-gray-400 uppercase tracking-wider">
              <span className="w-4" />
              <span>Name</span>
@@ -256,8 +278,10 @@ export default function FileBrowser() {
              <span className="hidden sm:block">Size</span>
           </div>
           <div>
-            {[...subFolders, ...currentFiles].map((f: any) => (
-              <AssetRow key={f.id} file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} />
+            {[...subFolders, ...currentFiles].map((f: any, i) => (
+              <div key={f.id} className="opacity-0 animate-fade-in-up" style={getDelayStyle(i)}>
+                <AssetRow file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} />
+              </div>
             ))}
           </div>
         </Card>

@@ -45,19 +45,23 @@ export default function AssetPage(props: Params) {
         try {
             // 1. Fetch Current Content
             const resContent = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}?path=${filePath}`);
-            if (!resContent.ok) throw new Error("File not found");
+            
+            // FIXED: Handle 404 gracefully (happens during repo switch)
+            if (resContent.status === 404) {
+                setError("File not found in this repository");
+                setLoading(false);
+                return;
+            }
+
+            if (!resContent.ok) throw new Error("Failed to fetch file details");
             const contentData = await resContent.json();
 
-            // 2. Fetch Versions from NEW Endpoint
+            // 2. Fetch Versions
             const resVersions = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/versions?path=${filePath}`);
             const versionData = await resVersions.json();
 
-            // Map API response to our Asset structure
-            // Assuming the API returns an array of file objects from history
             const mappedVersions = Array.isArray(versionData) ? versionData.map((v: any) => ({
                 id: v.sha,
-                // The API endpoint seems to return file objects, we might need to fetch commit info separately 
-                // or rely on what's available. For now, using SHA as label if message is missing.
                 label: v.commit?.message || `Commit ${v.sha.substring(0, 7)}`, 
                 date: v.commit?.author?.date || new Date().toISOString(),
                 author: v.commit?.author?.name || "Unknown",
@@ -65,7 +69,7 @@ export default function AssetPage(props: Params) {
                 sizeBytes: v.size
             })) : [];
 
-            // 3. Construct Asset Object
+            // 3. Construct Asset
             setAsset({
                 id: contentData.sha,
                 name: contentData.name,
@@ -79,10 +83,10 @@ export default function AssetPage(props: Params) {
                 lockedBy: undefined 
             });
             
-            // Default target version for diff is the previous one (if exists)
             if (mappedVersions.length > 1) {
                 setTargetVersionId(mappedVersions[1].id);
             }
+            setError(""); // Clear any previous errors
 
         } catch (err: any) {
             console.error(err);
@@ -121,9 +125,15 @@ export default function AssetPage(props: Params) {
 
   if (!currentRepo) return <div className="p-10 text-gray-500">Loading repository context...</div>;
   if (loading) return <div className="p-10 text-gray-500">Loading asset details...</div>;
-  if (error || !asset) return <div className="p-10 text-red-400">Error: {error}</div>;
+  
+  // FIXED: Better Error UI with back button
+  if (error || !asset) return (
+    <div className="flex flex-col items-center justify-center p-10 space-y-4">
+        <div className="text-red-400">Error: {error}</div>
+        <Button onClick={() => router.push("/")} variant="default">Return to Root</Button>
+    </div>
+  );
 
-  // Find the selected "Old" version for Diff
   const targetVersionObj = asset.versions.find(v => v.id === targetVersionId);
   const oldThumb = (targetVersionObj as any)?.thumb || "";
 
@@ -234,7 +244,6 @@ export default function AssetPage(props: Params) {
                         <li key={v.id} className="flex items-center justify-between rounded-md border border-default bg-background px-3 py-2 text-sm text-gray-200">
                             <div className="flex flex-col min-w-0">
                                 <span className="font-medium truncate" title={v.label}>{v.label}</span>
-                                {/* Safe check for id and author */}
                                 <span className="text-xs text-gray-500">
                                     {new Date(v.date).toLocaleDateString()} • {v.id?.substring(0,7) ?? "—"} • {(v as any).author ?? "Unknown"}
                                 </span>
