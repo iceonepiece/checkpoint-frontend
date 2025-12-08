@@ -1,18 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { MOCK_REPOS } from "@/lib/mockRepos";
 
 export default function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [repoOpen, setRepoOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  
   // -----Mock-----
   const [currentRepo, setCurrentRepo] = useState(MOCK_REPOS[0]);
 
-  // -----Mock-----
   const tabs = [
     { label: "Overview", href: "/overview" },
     { label: "Repository", href: "/" },
@@ -21,16 +23,14 @@ export default function TopNav() {
     { label: "Settings", href: "https://github.com/iceonepiece/checkpoint-frontend/settings", external: true },
   ];
 
-  // -----Real-----
-  // const tabs = [
-  //   { label: "Overview", href: "/overview" },
-  //   { label: "Repository", href: "/" },
-  //   { label: "Issues", href: `https://github.com/${currentRepo.fullName}/issues`, external: true },
-  //   { label: "Pull requests", href: `https://github.com/${currentRepo.fullName}/pulls`, external: true },
-  //   { label: "Settings", href: `https://github.com/${currentRepo.fullName}/settings`, external: true },
-  // ];
-
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
+
+  const handleLogout = () => {
+    // Clear mock session
+    localStorage.removeItem("isLoggedIn");
+    // Redirect to login
+    router.push("/login");
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-default bg-[var(--bg-header)] backdrop-blur">
@@ -56,12 +56,10 @@ export default function TopNav() {
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div className="flex items-center gap-1 truncate">
-                  <div className="size-2 rounded-full bg-green-500"/>
-                  <span></span>
                   <span className="text-gray-400 font-normal shrink-0">{currentRepo.owner} /</span>
                   <span className="truncate">{currentRepo.name}</span>
                 </div>
-                <span className="rounded-full border border-default px-2 py-0.5 pt-1 text-[10px] text-gray-400 shrink-0 font-medium">
+                <span className="rounded-full border border-default px-2 py-0.5 text-[10px] text-gray-400 shrink-0 font-medium">
                   {currentRepo.private ? "Private" : "Public"}
                 </span>
               </div>
@@ -97,17 +95,49 @@ export default function TopNav() {
           </div>
         </div>
 
-        {/* RIGHT: Profile Picture */}
-        <div className="flex items-center gap-3 shrink-0">
-          <a
-            href="https://github.com/Example-User"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="size-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 border border-default hover:ring-2 hover:ring-blue-500/50 transition-all cursor-pointer overflow-hidden"
-            title="View GitHub Profile"
+        {/* RIGHT: Profile Picture & Menu */}
+        <div className="flex items-center gap-3 shrink-0 relative">
+          <button 
+            onClick={() => setProfileOpen(!profileOpen)}
+            className="size-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 border border-default hover:ring-2 hover:ring-blue-500/50 transition-all cursor-pointer overflow-hidden relative"
+            title="User Menu"
           >
             <img src="/avatars/user_placeholder.jpg" alt="" className="w-full h-full object-cover opacity-0" />
-          </a>
+          </button>
+
+          {/* Profile Dropdown */}
+          {profileOpen && (
+             <>
+                <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+                <div className="absolute top-full right-0 mt-2 w-56 z-50 rounded-lg surface-overlay bg-[var(--bg-card)] border border-default py-1 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-4 py-2 border-b border-default mb-1">
+                        <p className="text-xs text-gray-400">Signed in as</p>
+                        <p className="text-sm font-bold text-gray-200 truncate">Example-User</p>
+                    </div>
+
+                    <a
+                        href="https://github.com/Example-User"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--bg-hover)] flex items-center gap-2"
+                        onClick={() => setProfileOpen(false)}
+                    >
+                        <Icon className="size-4 text-gray-400"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>
+                        View Profile on GitHub
+                    </a>
+
+                    <div className="border-t border-default my-1" />
+
+                    <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[var(--bg-hover)] flex items-center gap-2"
+                    >
+                        <Icon className="size-4"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Icon>
+                        Sign out
+                    </button>
+                </div>
+             </>
+           )}
         </div>
       </div>
 
