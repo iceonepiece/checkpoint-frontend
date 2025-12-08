@@ -49,12 +49,17 @@ export default function ReviewPanel({ status, onStatusChange, comments, onAddCom
           {comments.map((c) => (
             <div key={c.id} className="flex gap-3 text-sm group">
                {/* Avatar */}
-               <div className="size-8 rounded-full bg-gray-700 flex items-center justify-center shrink-0 text-xs font-bold text-gray-300 border border-default">
-                  {c.user.slice(0, 2).toUpperCase()}
+               <div className="size-8 rounded-full bg-gray-700 flex items-center justify-center shrink-0 text-xs font-bold text-gray-300 border border-default overflow-hidden">
+                  {c.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.avatarUrl} alt={c.user} className="w-full h-full object-cover" />
+                  ) : (
+                      c.user.slice(0, 2).toUpperCase()
+                  )}
                </div>
                
                {/* Content */}
-               <div className="space-y-1">
+               <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2">
                      <span className="font-semibold text-gray-200">{c.user}</span>
                      <span className="text-xs text-gray-500">{c.date}</span>

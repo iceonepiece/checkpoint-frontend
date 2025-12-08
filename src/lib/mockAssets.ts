@@ -3,6 +3,7 @@ export type Comment = {
   user: string;
   text: string;
   date: string;
+  avatarUrl?: string; // Added this field
 };
 
 export type Asset = {

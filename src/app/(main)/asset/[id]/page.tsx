@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Asset, Comment } from "@/lib/mockAssets"; 
+import { Asset } from "@/lib/mockAssets"; 
 import AssetPreview from "@/components/AssetPreview";
 import DiffViewer from "@/components/DiffViewer";
 import ReviewPanel from "@/components/ReviewPanel";
@@ -13,7 +13,7 @@ import { useRepo } from "@/lib/RepoContext";
 
 type Params = { params: Promise<{ id: string }> };
 
-// --- HELPER: Status Mapping ---
+// Map DB Integers to UI Strings
 const STATUS_MAP: Record<number, "Pending" | "Approved" | "Needs changes"> = {
   0: "Pending",
   1: "Approved",
@@ -35,16 +35,16 @@ export default function AssetPage(props: Params) {
   const { currentRepo } = useRepo();
 
   const filePath = decodeURIComponent(params.id);
-  const fileName = filePath.split("/").pop() || "Unknown";
-
+  
   const [asset, setAsset] = useState<Asset | null>(null);
+  const [fileId, setFileId] = useState<number | null>(null); // Store DB Primary Key
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
-  // State for Version Compare
   const [compareMode, setCompareMode] = useState(false);
   const [targetVersionId, setTargetVersionId] = useState<string>("");
 
+  // --- DATA LOADING ---
   useEffect(() => {
     async function loadAssetData() {
         if (!currentRepo) return;
@@ -54,7 +54,7 @@ export default function AssetPage(props: Params) {
         try {
             const baseUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}`;
             
-            // 1. Fetch Metadata (Git Content)
+            // 1. Fetch Metadata (GitHub Content)
             const resMeta = await fetch(`${baseUrl}?path=${filePath}`);
             if (resMeta.status === 404) {
                 setError("File not found in this repository");
@@ -64,20 +64,26 @@ export default function AssetPage(props: Params) {
             if (!resMeta.ok) throw new Error("Failed to fetch file metadata");
             const metaData = await resMeta.json();
 
-            // 2. Fetch DB Info (Status & Comments)
+            // 2. Fetch Info from Database (Status, Comments, File ID)
             let infoData = { status: "Pending", comments: [] };
             try {
                 const resInfo = await fetch(`${baseUrl}/info?path=${filePath}`);
                 if (resInfo.ok) {
                     const data = await resInfo.json();
                     
-                    // FIXED: Map integer status to string
-                    const statusInt = data.status ?? 0;
+                    // Capture the File ID for updates
+                    if (data.file_id) setFileId(data.file_id);
+
+                    // Map asset_status int -> string
+                    const statusInt = data.asset_status ?? 0;
                     const statusStr = STATUS_MAP[statusInt] || "Pending";
 
+                    // Map comments including user info & avatar
+                    // API returns: { user: { username: "...", avatar_url: "..." } }
                     const dbComments = data.comments?.map((c: any) => ({
                         id: c.comment_id,
-                        user: "User", 
+                        user: c.user?.username || "User", 
+                        avatarUrl: c.user?.avatar_url, // Map the avatar_url here
                         text: c.message,
                         date: new Date(c.created_at).toLocaleDateString()
                     })) || [];
@@ -88,10 +94,10 @@ export default function AssetPage(props: Params) {
                     };
                 }
             } catch (err) {
-                console.warn("Could not fetch additional info (file might not be tracked yet).");
+                console.warn("Info fetch failed (file might be untracked):", err);
             }
 
-            // 3. Fetch Version History
+            // 3. Fetch Version History (Using /versions endpoint)
             const resVersions = await fetch(`${baseUrl}/versions?path=${filePath}`);
             const versionData = resVersions.ok ? await resVersions.json() : [];
 
@@ -113,7 +119,7 @@ export default function AssetPage(props: Params) {
                 modifiedAt: mappedVersions[0]?.date || new Date().toISOString(), 
                 thumb: metaData.download_url,
                 versions: mappedVersions, 
-                status: infoData.status as any, // "Pending" | "Approved" | "Needs changes"
+                status: infoData.status as any,
                 comments: infoData.comments,      
                 lockedBy: undefined 
             });
@@ -132,14 +138,89 @@ export default function AssetPage(props: Params) {
     loadAssetData();
   }, [currentRepo, filePath]);
 
-  const handleStatusChange = (newStatus: "Needs changes" | "Pending" | "Approved") => {
-      if(asset) setAsset({ ...asset, status: newStatus });
+  // --- HANDLERS ---
+
+  const handleStatusChange = async (newStatus: "Needs changes" | "Pending" | "Approved") => {
+      if(!asset || !currentRepo) return;
+      
+      // 1. Optimistic UI update
+      setAsset({ ...asset, status: newStatus });
+
+      // 2. Call API (PUT creates file if missing)
+      try {
+        const res = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info`, {
+            method: "PUT",
+            body: JSON.stringify({ path: filePath, status: newStatus })
+        });
+        
+        // If file was just created, refetch to get the new file_id
+        if (res.ok && !fileId) {
+             const resInfo = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info?path=${filePath}`);
+             if (resInfo.ok) {
+                 const data = await resInfo.json();
+                 if (data.file_id) setFileId(data.file_id);
+             }
+        }
+      } catch (err) {
+        console.error("Failed to update status", err);
+      }
   };
 
-  const handleAddComment = (text: string) => {
-      if(!asset) return;
-      const newComment = { id: `temp_${Date.now()}`, user: "Me", text: text, date: "Just now" };
-      setAsset({ ...asset, comments: [...asset.comments, newComment] });
+  const handleAddComment = async (text: string) => {
+      if(!asset || !currentRepo) return;
+
+      // Ensure we have a file_id. If null, the file isn't tracked in DB yet.
+      let currentFileId = fileId;
+
+      if (!currentFileId) {
+          try {
+              // Trigger implicit creation via status update
+              const resCreate = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info`, {
+                  method: "PUT",
+                  body: JSON.stringify({ path: filePath, status: asset.status })
+              });
+              
+              if (resCreate.ok) {
+                  const resInfo = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info?path=${filePath}`);
+                  const data = await resInfo.json();
+                  currentFileId = data.file_id;
+                  setFileId(currentFileId);
+              }
+          } catch (e) {
+              console.error("Failed to initialize file for commenting", e);
+              return;
+          }
+      }
+
+      if (!currentFileId) {
+          console.error("Could not obtain file_id for comment");
+          return;
+      }
+
+      // Proceed to post comment
+      try {
+        const res = await fetch(`/api/comments/${currentRepo.owner}/${currentRepo.name}`, {
+            method: "POST",
+            body: JSON.stringify({ file_id: currentFileId, message: text })
+        });
+        
+        if (res.ok) {
+            const { comment } = await res.json();
+            
+            // Add to UI immediately
+            // Note: We don't have the full user object from this POST response usually,
+            // so we use placeholder data or user context if available.
+            const newComment = { 
+                id: comment.comment_id, 
+                user: "Me", 
+                text: comment.message, 
+                date: new Date(comment.created_at).toLocaleDateString() 
+            };
+            setAsset({ ...asset, comments: [...asset.comments, newComment] });
+        }
+      } catch (err) {
+        console.error("Failed to post comment", err);
+      }
   };
 
   const handleLock = () => {
