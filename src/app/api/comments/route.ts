@@ -48,7 +48,7 @@ export async function POST(req : Request) {
         .from("comments")
         .insert({
             file_id,
-            github_id: auth.user?.id,
+            github_id: auth.user?.github_id,
             message,
         })
         .select()
