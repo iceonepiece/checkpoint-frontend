@@ -52,3 +52,13 @@ export function KeyRow({ k, v }: { k: string; v: React.ReactNode }) {
     </div>
   );
 }
+
+// --- NEW: Reusable Loading Spinner ---
+export function LoadingSpinner({ text = "Loading..." }: { text?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-gray-500 gap-3">
+      <div className="size-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <span className="text-sm font-medium animate-pulse">{text}</span>
+    </div>
+  );
+}

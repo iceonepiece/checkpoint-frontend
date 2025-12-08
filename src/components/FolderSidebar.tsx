@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/Icon"; 
 import { useRepo } from "@/lib/RepoContext";
+import { LoadingSpinner } from "@/components/ui"; // Import
 
 // Local type definition
 type TreeNode = {
@@ -63,7 +64,7 @@ function FolderIcon({ open }: { open: boolean }) {
     <svg 
       className="h-4 w-4 text-blue-400 shrink-0" 
       viewBox="0 0 24 24" 
-      fill={open ? "currentColor" : "none"} 
+      fill={!open ? "currentColor" : "none"} 
       stroke="currentColor" 
       strokeWidth="2"
     >
@@ -145,9 +146,9 @@ function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentP
           className="flex flex-1 items-center gap-2 truncate px-1 py-1 text-left rounded-sm cursor-pointer"
         >
           {node.isRoot ? (
-             <Icon className="size-4 text-blue-400 shrink-0"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
+             <FolderIcon open={open} />
           ) : (
-             <FolderIcon open={open || selected} />
+             <FolderIcon open={open} />
           )}
           <span className="truncate">{node.name}</span>
         </button>
@@ -232,7 +233,6 @@ export default function FolderSidebar() {
     if (currentPath) {
       const parts = currentPath.split("/"); 
       setExpanded(prev => {
-        // FIXED: Explicitly type 'next' so TypeScript knows it can accept any string key
         const next: Record<string, boolean> = { ...prev, "ROOT": true };
         
         let accum = "";
@@ -282,10 +282,10 @@ export default function FolderSidebar() {
         className="flex-1 overflow-y-auto px-2"
       >
         {loading ? (
-            <div className="text-xs text-gray-500 text-center py-4">Loading structure...</div>
+            // CHANGED: Use LoadingSpinner here
+            <LoadingSpinner text="Loading structure..." />
         ) : filteredTree.length > 0 ? (
           filteredTree.map((n, i) => (
-            // ADDED: Wrapper div with staggered animation for Top Level
             <div 
                 key={n.id} 
                 className="opacity-0 animate-fade-in-up" 

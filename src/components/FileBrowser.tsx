@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation"; 
 import Breadcrumbs from "@/components/Breadcrumbs";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, LoadingSpinner } from "@/components/ui"; // Import LoadingSpinner
 import { Icon } from "@/components/Icon"; 
 import { type FileItem } from "@/lib/mockFiles"; 
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
@@ -137,44 +137,29 @@ export default function FileBrowser() {
 
   // --- HANDLERS ---
 
-  // NEW: Robust Download Handler
   const handleDownload = async () => {
     const selectedIds = Object.keys(selected).filter(k => selected[k]);
     const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
     
     const validItems = itemsToDownload.filter(i => !i.isFolder && i.thumb);
 
-    if (validItems.length === 0) {
-       // Optional: Notify user if they tried to download folders or broken files
-       return;
-    }
+    if (validItems.length === 0) return;
 
-    // Process downloads sequentially to prevent browser blocking
     for (const item of validItems) {
         try {
-            // 1. Fetch the file as a Blob
             const response = await fetch(item.thumb!);
             if (!response.ok) throw new Error("Network response was not ok");
-            
             const blob = await response.blob();
-            
-            // 2. Create a temporary URL
             const url = window.URL.createObjectURL(blob);
-            
-            // 3. Trigger download via hidden anchor tag
             const link = document.createElement("a");
             link.href = url;
-            link.download = item.name; // This forces the "Save As" behavior with correct name
+            link.download = item.name;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
-            // 4. Cleanup
             window.URL.revokeObjectURL(url);
-            
         } catch (err) {
             console.error(`Failed to download ${item.name}`, err);
-            // Fallback: If Blob fetch fails (e.g. CORS), open in new tab
             if (item.thumb) window.open(item.thumb, '_blank');
         }
     }
@@ -251,7 +236,10 @@ export default function FileBrowser() {
 
       {/* Grid / List with STAGGERED Animation */}
       {loading ? (
-         <div className="flex justify-center py-20 text-gray-500">Loading contents...</div>
+         // CHANGED: Use LoadingSpinner here
+         <div className="flex-1 flex items-center justify-center min-h-[300px]">
+            <LoadingSpinner text="Loading contents..." />
+         </div>
       ) : error ? (
          <div className="flex justify-center py-20 text-red-400">{error}</div>
       ) : subFolders.length === 0 && currentFiles.length === 0 ? (

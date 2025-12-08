@@ -6,7 +6,7 @@ import { Asset } from "@/lib/mockAssets";
 import AssetPreview from "@/components/AssetPreview";
 import DiffViewer from "@/components/DiffViewer";
 import ReviewPanel from "@/components/ReviewPanel";
-import { Card, KeyRow, SectionTitle, Button } from "@/components/ui";
+import { Card, KeyRow, SectionTitle, Button, LoadingSpinner } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import Link from "next/link";
 import { useRepo } from "@/lib/RepoContext";
@@ -37,123 +37,144 @@ export default function AssetPage(props: Params) {
   const filePath = decodeURIComponent(params.id);
   
   const [asset, setAsset] = useState<Asset | null>(null);
-  const [fileId, setFileId] = useState<number | null>(null); // Store DB Primary Key
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [fileId, setFileId] = useState<number | null>(null); 
   
+  // Loading States
+  const [mainLoading, setMainLoading] = useState(true); 
+  const [infoLoading, setInfoLoading] = useState(true); 
+  const [versionsLoading, setVersionsLoading] = useState(true); 
+  
+  const [error, setError] = useState("");
   const [compareMode, setCompareMode] = useState(false);
   const [targetVersionId, setTargetVersionId] = useState<string>("");
 
   // --- DATA LOADING ---
   useEffect(() => {
-    async function loadAssetData() {
+    let isMounted = true;
+
+    async function loadData() {
         if (!currentRepo) return;
-        setLoading(true);
+        setMainLoading(true);
         setError("");
 
+        const baseUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}`;
+
         try {
-            const baseUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}`;
-            
-            // 1. Fetch Metadata (GitHub Content)
+            // 1. Metadata (Blocking)
             const resMeta = await fetch(`${baseUrl}?path=${filePath}`);
+            
             if (resMeta.status === 404) {
-                setError("File not found in this repository");
-                setLoading(false);
+                if (isMounted) {
+                    setError("File not found in this repository");
+                    setMainLoading(false);
+                }
                 return;
             }
             if (!resMeta.ok) throw new Error("Failed to fetch file metadata");
             const metaData = await resMeta.json();
 
-            // 2. Fetch Info from Database (Status, Comments, File ID)
-            let infoData = { status: "Pending", comments: [] };
-            try {
-                const resInfo = await fetch(`${baseUrl}/info?path=${filePath}`);
-                if (resInfo.ok) {
-                    const data = await resInfo.json();
-                    
-                    // Capture the File ID for updates
-                    if (data.file_id) setFileId(data.file_id);
-
-                    // Map asset_status int -> string
-                    const statusInt = data.asset_status ?? 0;
-                    const statusStr = STATUS_MAP[statusInt] || "Pending";
-
-                    // Map comments including user info & avatar
-                    // API returns: { user: { username: "...", avatar_url: "..." } }
-                    const dbComments = data.comments?.map((c: any) => ({
-                        id: c.comment_id,
-                        user: c.user?.username || "User", 
-                        avatarUrl: c.user?.avatar_url, // Map the avatar_url here
-                        text: c.message,
-                        date: new Date(c.created_at).toLocaleDateString()
-                    })) || [];
-                    
-                    infoData = {
-                        status: statusStr,
-                        comments: dbComments
-                    };
-                }
-            } catch (err) {
-                console.warn("Info fetch failed (file might be untracked):", err);
-            }
-
-            // 3. Fetch Version History (Using /versions endpoint)
-            const resVersions = await fetch(`${baseUrl}/versions?path=${filePath}`);
-            const versionData = resVersions.ok ? await resVersions.json() : [];
-
-            const mappedVersions = Array.isArray(versionData) ? versionData.map((v: any) => ({
-                id: v.sha,
-                label: v.commit?.message || `Commit ${v.sha.substring(0, 7)}`, 
-                date: v.commit?.author?.date || new Date().toISOString(),
-                author: v.commit?.author?.name || "Unknown",
-                thumb: v.download_url,
-                sizeBytes: v.size
-            })) : [];
-
-            // 4. Construct Final Asset Object
-            setAsset({
+            const initialAsset: Asset = {
                 id: metaData.sha,
                 name: metaData.name,
                 type: getFileType(metaData.name),
                 sizeBytes: metaData.size,
-                modifiedAt: mappedVersions[0]?.date || new Date().toISOString(), 
+                modifiedAt: new Date().toISOString(), 
                 thumb: metaData.download_url,
-                versions: mappedVersions, 
-                status: infoData.status as any,
-                comments: infoData.comments,      
+                versions: [],
+                status: "Pending", 
+                comments: [],      
                 lockedBy: undefined 
-            });
-            
-            if (mappedVersions.length > 1) {
-                setTargetVersionId(mappedVersions[1].id);
+            };
+
+            if (isMounted) {
+                setAsset(initialAsset);
+                setMainLoading(false); 
+                setInfoLoading(true);
+                setVersionsLoading(true);
             }
 
+            // 2. Info (Background)
+            fetch(`${baseUrl}/info?path=${filePath}`)
+                .then(async (res) => {
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (!isMounted) return;
+
+                        if (data.file_id) setFileId(data.file_id);
+
+                        const statusInt = data.asset_status ?? 0;
+                        const statusStr = STATUS_MAP[statusInt] || "Pending";
+
+                        const dbComments = data.comments?.map((c: any) => ({
+                            id: c.comment_id,
+                            user: c.user?.username || "User", 
+                            avatarUrl: c.user?.avatar_url,
+                            text: c.message,
+                            date: new Date(c.created_at).toLocaleDateString()
+                        })) || [];
+
+                        setAsset(prev => prev ? { ...prev, status: statusStr, comments: dbComments } : null);
+                    }
+                })
+                .catch(console.warn)
+                .finally(() => isMounted && setInfoLoading(false));
+
+            // 3. Versions (Background)
+            fetch(`${baseUrl}/versions?path=${filePath}`)
+                .then(async (res) => {
+                    if (res.ok) {
+                        const versionData = await res.json();
+                        if (!isMounted) return;
+
+                        const mappedVersions = Array.isArray(versionData) ? versionData.map((v: any) => ({
+                            id: v.sha,
+                            label: v.commit?.message || `Commit ${v.sha.substring(0, 7)}`, 
+                            date: v.commit?.author?.date || new Date().toISOString(),
+                            author: v.commit?.author?.name || "Unknown",
+                            thumb: v.download_url,
+                            sizeBytes: v.size
+                        })) : [];
+
+                        setAsset(prev => {
+                            if (!prev) return null;
+                            return {
+                                ...prev,
+                                versions: mappedVersions,
+                                modifiedAt: mappedVersions[0]?.date || prev.modifiedAt, 
+                            };
+                        });
+
+                        if (mappedVersions.length > 1) {
+                            setTargetVersionId(mappedVersions[1].id);
+                        }
+                    }
+                })
+                .catch(console.error)
+                .finally(() => isMounted && setVersionsLoading(false));
+
         } catch (err: any) {
-            console.error(err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
+            if (isMounted) {
+                console.error(err);
+                setError(err.message);
+                setMainLoading(false);
+            }
         }
     }
-    loadAssetData();
+
+    loadData();
+    return () => { isMounted = false; };
   }, [currentRepo, filePath]);
 
   // --- HANDLERS ---
-
   const handleStatusChange = async (newStatus: "Needs changes" | "Pending" | "Approved") => {
       if(!asset || !currentRepo) return;
-      
-      // 1. Optimistic UI update
-      setAsset({ ...asset, status: newStatus });
+      setAsset({ ...asset, status: newStatus }); 
 
-      // 2. Call API (PUT creates file if missing)
       try {
         const res = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info`, {
             method: "PUT",
             body: JSON.stringify({ path: filePath, status: newStatus })
         });
-        
-        // If file was just created, refetch to get the new file_id
         if (res.ok && !fileId) {
              const resInfo = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info?path=${filePath}`);
              if (resInfo.ok) {
@@ -162,54 +183,38 @@ export default function AssetPage(props: Params) {
              }
         }
       } catch (err) {
-        console.error("Failed to update status", err);
+        console.error("Status update failed", err);
       }
   };
 
   const handleAddComment = async (text: string) => {
       if(!asset || !currentRepo) return;
 
-      // Ensure we have a file_id. If null, the file isn't tracked in DB yet.
       let currentFileId = fileId;
-
       if (!currentFileId) {
           try {
-              // Trigger implicit creation via status update
               const resCreate = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info`, {
                   method: "PUT",
                   body: JSON.stringify({ path: filePath, status: asset.status })
               });
-              
               if (resCreate.ok) {
                   const resInfo = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info?path=${filePath}`);
                   const data = await resInfo.json();
                   currentFileId = data.file_id;
                   setFileId(currentFileId);
               }
-          } catch (e) {
-              console.error("Failed to initialize file for commenting", e);
-              return;
-          }
+          } catch (e) { return; }
       }
 
-      if (!currentFileId) {
-          console.error("Could not obtain file_id for comment");
-          return;
-      }
+      if (!currentFileId) return;
 
-      // Proceed to post comment
       try {
         const res = await fetch(`/api/comments/${currentRepo.owner}/${currentRepo.name}`, {
             method: "POST",
             body: JSON.stringify({ file_id: currentFileId, message: text })
         });
-        
         if (res.ok) {
             const { comment } = await res.json();
-            
-            // Add to UI immediately
-            // Note: We don't have the full user object from this POST response usually,
-            // so we use placeholder data or user context if available.
             const newComment = { 
                 id: comment.comment_id, 
                 user: "Me", 
@@ -219,7 +224,7 @@ export default function AssetPage(props: Params) {
             setAsset({ ...asset, comments: [...asset.comments, newComment] });
         }
       } catch (err) {
-        console.error("Failed to post comment", err);
+        console.error("Comment failed", err);
       }
   };
 
@@ -238,7 +243,12 @@ export default function AssetPage(props: Params) {
   };
 
   if (!currentRepo) return <div className="p-10 text-gray-500">Loading repository context...</div>;
-  if (loading) return <div className="p-10 text-gray-500">Loading asset details...</div>;
+  
+  if (mainLoading) return (
+      <div className="flex flex-col items-center justify-center h-full">
+          <LoadingSpinner text="Loading asset..." />
+      </div>
+  );
   
   if (error || !asset) return (
     <div className="flex flex-col items-center justify-center p-10 space-y-4">
@@ -254,8 +264,8 @@ export default function AssetPage(props: Params) {
     <section className="h-full w-full overflow-y-auto">
       <div className="space-y-6 px-6 py-6 max-w-screen-xl mx-auto">
         
-        {/* Header */}
-        <Card className="p-4 shrink-0">
+        {/* Header - Delay: 0s */}
+        <Card className="p-4 shrink-0 opacity-0 animate-fade-in-left">
             <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
                 <Button variant="ghost" size="icon" onClick={() => router.back()} title="Go Back">
@@ -292,7 +302,7 @@ export default function AssetPage(props: Params) {
                     size="sm" 
                     variant={compareMode ? "primary" : "default"}
                     onClick={() => setCompareMode(!compareMode)}
-                    disabled={asset.versions.length < 2}
+                    disabled={versionsLoading || asset.versions.length < 2}
                 >
                 {compareMode ? "Exit Compare" : "Compare"}
                 </Button>
@@ -327,7 +337,12 @@ export default function AssetPage(props: Params) {
         {/* Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 pb-10">
             <div className="flex flex-col gap-4">
-                <Card className="p-3 bg-background flex flex-col justify-center">
+                
+                {/* Preview - Delay: 0.1s */}
+                <Card 
+                    className="p-3 bg-background flex flex-col justify-center opacity-0 animate-fade-in-left"
+                    style={{ animationDelay: "0.1s" }}
+                >
                     {compareMode ? (
                         <DiffViewer 
                             before={oldThumb} 
@@ -340,45 +355,68 @@ export default function AssetPage(props: Params) {
                 </Card>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className="p-3">
-                    <SectionTitle>Metadata</SectionTitle>
-                    <div className="mt-2 divide-y divide-default">
-                        <KeyRow k="Type" v={asset.type} />
-                        <KeyRow k="Size" v={`${(asset.sizeBytes / 1024).toFixed(1)} KB`} />
-                        <KeyRow k="Modified" v={new Date(asset.modifiedAt).toLocaleString()} />
-                        <KeyRow k="Status" v={asset.status} />
-                    </div>
+                    {/* Metadata - Delay: 0.2s */}
+                    <Card 
+                        className="p-3 opacity-0 animate-fade-in-left"
+                        style={{ animationDelay: "0.2s" }}
+                    >
+                        <SectionTitle>Metadata</SectionTitle>
+                        <div className="mt-2 divide-y divide-default">
+                            <KeyRow k="Type" v={asset.type} />
+                            <KeyRow k="Size" v={`${(asset.sizeBytes / 1024).toFixed(1)} KB`} />
+                            <KeyRow k="Modified" v={new Date(asset.modifiedAt).toLocaleString()} />
+                            <KeyRow k="Status" v={asset.status} />
+                        </div>
                     </Card>
 
-                    <Card className="p-3">
-                    <SectionTitle>Versions</SectionTitle>
-                    <ul className="mt-2 space-y-2 max-h-60 overflow-y-auto">
-                        {asset.versions.map((v) => (
-                        <li key={v.id} className="flex items-center justify-between rounded-md border border-default bg-background px-3 py-2 text-sm text-gray-200">
-                            <div className="flex flex-col min-w-0">
-                                <span className="font-medium truncate" title={v.label}>{v.label}</span>
-                                <span className="text-xs text-gray-500">
-                                    {new Date(v.date).toLocaleDateString()} • {v.id?.substring(0,7) ?? "—"} • {(v as any).author ?? "Unknown"}
-                                </span>
-                            </div>
-                            {!compareMode && asset.versions.indexOf(v) > 0 && (
-                                <button 
-                                    onClick={() => { setCompareMode(true); setTargetVersionId(v.id); }}
-                                    className="text-xs border border-default rounded px-2 py-1 hover:bg-white/5 shrink-0 ml-2"
-                                >
-                                    Diff
-                                </button>
+                    {/* Versions - Delay: 0.3s */}
+                    <Card 
+                        className="p-3 opacity-0 animate-fade-in-left"
+                        style={{ animationDelay: "0.3s" }}
+                    >
+                        <SectionTitle>Versions</SectionTitle>
+                        <ul className="mt-2 space-y-2 max-h-60 overflow-y-auto">
+                            {versionsLoading ? (
+                                [1,2,3].map(i => (
+                                    <li key={i} className="flex flex-col gap-1 p-3 border border-default rounded-md bg-white/5 animate-pulse">
+                                        <div className="h-3 w-3/4 bg-white/10 rounded"/>
+                                        <div className="h-2 w-1/2 bg-white/10 rounded"/>
+                                    </li>
+                                ))
+                            ) : asset.versions.length === 0 ? (
+                                <div className="text-gray-500 text-xs py-4 text-center">No history found.</div>
+                            ) : (
+                                asset.versions.map((v) => (
+                                <li key={v.id} className="flex items-center justify-between rounded-md border border-default bg-background px-3 py-2 text-sm text-gray-200">
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="font-medium truncate" title={v.label}>{v.label}</span>
+                                        <span className="text-xs text-gray-500">
+                                            {new Date(v.date).toLocaleDateString()} • {v.id?.substring(0,7) ?? "—"} • {(v as any).author ?? "Unknown"}
+                                        </span>
+                                    </div>
+                                    {!compareMode && asset.versions.indexOf(v) > 0 && (
+                                        <button 
+                                            onClick={() => { setCompareMode(true); setTargetVersionId(v.id); }}
+                                            className="text-xs border border-default rounded px-2 py-1 hover:bg-white/5 shrink-0 ml-2"
+                                        >
+                                            Diff
+                                        </button>
+                                    )}
+                                </li>
+                                ))
                             )}
-                        </li>
-                        ))}
-                        {asset.versions.length === 0 && <div className="text-gray-500 text-xs">No history found.</div>}
-                    </ul>
+                        </ul>
                     </Card>
                 </div>
             </div>
 
-            <div>
+            {/* Review Panel - Delay: 0.4s */}
+            <div 
+                className="opacity-0 animate-fade-in-left"
+                style={{ animationDelay: "0.4s" }}
+            >
                 <ReviewPanel 
+                    isLoading={infoLoading}
                     status={asset.status} 
                     onStatusChange={handleStatusChange}
                     comments={asset.comments}

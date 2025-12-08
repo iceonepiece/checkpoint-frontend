@@ -27,7 +27,8 @@ export function FolderCard({ file, selected, onToggle }: any) {
       {/* Name & Meta */}
       <div className="min-w-0">
           <Link 
-              href={`/?path=${file.path}`} 
+              // FIXED: Added encodeURIComponent to handle special chars like [ ] in folder paths
+              href={`/?path=${encodeURIComponent(file.path || "")}`} 
               onClick={(e) => e.stopPropagation()}
               className="truncate text-sm font-medium text-gray-200 hover:underline decoration-gray-500 underline-offset-2 block"
               title={file.name}
@@ -41,14 +42,6 @@ export function FolderCard({ file, selected, onToggle }: any) {
               </div>
           )}
       </div>
-
-      {/* Kebab Menu */}
-      {/* <button 
-        onClick={(e) => e.stopPropagation()}
-        className="z-30 p-1 text-gray-400 hover:bg-black/50 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-          <Kebab />
-      </button> */}
 
       {/* Lock Overlay Icon */}
       {isLocked && (
