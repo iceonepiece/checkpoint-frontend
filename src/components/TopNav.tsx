@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import type { AuthUser } from "@/lib/auth";
-import { useRepo, type Repo } from "@/lib/RepoContext"; // Import Context
+import { useRepo, type Repo } from "@/lib/RepoContext";
 
 export default function TopNav({ user }: { user: AuthUser }) {
   const pathname = usePathname();
@@ -14,12 +14,9 @@ export default function TopNav({ user }: { user: AuthUser }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  // Use Global State instead of Local
   const { repos, setRepos, currentRepo, setCurrentRepo, loading, setLoading } = useRepo();
 
-  // FETCH REPOS ON MOUNT
   useEffect(() => {
-    // Only fetch if we haven't already (or force refresh if needed)
     if (repos.length > 0) return; 
 
     async function fetchRepos() {
@@ -37,7 +34,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
           
           setRepos(mappedRepos);
           
-          // Default to the first repo if none selected
           if (mappedRepos.length > 0 && !currentRepo) {
             setCurrentRepo(mappedRepos[0]);
           }
@@ -51,7 +47,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
     fetchRepos();
   }, [repos.length, currentRepo, setRepos, setCurrentRepo, setLoading]);
 
-  // Links based on global currentRepo
   const repoBaseUrl = currentRepo ? `https://github.com/${currentRepo.fullName}` : "#";
 
   const tabs = [
@@ -80,7 +75,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
     <header className="sticky top-0 z-50 border-b border-default bg-[var(--bg-header)] backdrop-blur">
       <div className="h-14 px-4 flex items-center gap-4">
 
-        {/* LEFT: Site Logo & Name */}
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="size-8 rounded-md bg-white text-black flex items-center justify-center">
@@ -90,7 +84,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
           </Link>
         </div>
 
-        {/* CENTER: Repository Selector */}
         <div className="flex-1 flex justify-center min-w-0 px-2 md:px-6">
           <div className="relative w-full max-w-xl">
             <button
@@ -116,7 +109,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
               <Icon className="size-3 text-gray-500 ml-1 shrink-0"><path d="m6 9 6 6 6-6" /></Icon>
             </button>
             
-            {/* Dropdown Menu */}
             {repoOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setRepoOpen(false)} />
@@ -129,7 +121,11 @@ export default function TopNav({ user }: { user: AuthUser }) {
                     {repos.map((repo) => (
                         <button
                         key={repo.id}
-                        onClick={() => { setCurrentRepo(repo); setRepoOpen(false); }}
+                        onClick={() => { 
+                            setCurrentRepo(repo); 
+                            setRepoOpen(false);
+                            router.push("/"); // FIXED: Reset path to root when switching repos
+                        }}
                         className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--bg-hover)] flex items-center gap-2"
                         >
                         <div className={`size-2 rounded-full ${currentRepo && repo.id === currentRepo.id ? "bg-green-500" : "bg-transparent border border-gray-600"}`} />
@@ -146,7 +142,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
           </div>
         </div>
 
-        {/* RIGHT: User Profile (Unchanged) */}
         <div className="flex items-center gap-3 shrink-0 relative">
           <button 
             onClick={() => setProfileOpen(!profileOpen)}
@@ -157,7 +152,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
             <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
           </button>
 
-          {/* Profile Dropdown (Same as before) */}
           {profileOpen && (
              <>
                 <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />

@@ -2,9 +2,59 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { TreeNode } from "@/lib/mockFolderTree";
-import { MOCK_TREE } from "@/lib/mockFolderTree";
 import { Icon } from "@/components/Icon"; 
+import { useRepo } from "@/lib/RepoContext";
+
+// Local type definition
+type TreeNode = {
+  id: string;
+  name: string;
+  children?: TreeNode[];
+  isRoot?: boolean;
+};
+
+/* --- UTILITY: Build Tree from Flat Paths --- */
+function buildTreeFromPaths(items: { path: string }[]): TreeNode[] {
+  const root: TreeNode[] = [];
+  const nodesByPath: Record<string, TreeNode> = {};
+
+  // 1. Create nodes
+  items.forEach(item => {
+    const parts = item.path.split('/');
+    const name = parts[parts.length - 1];
+    nodesByPath[item.path] = { id: name, name: name, children: [] };
+  });
+
+  // 2. Build hierarchy
+  items.forEach(item => {
+    const node = nodesByPath[item.path];
+    const parts = item.path.split('/');
+    
+    if (parts.length > 1) {
+      const parentPath = parts.slice(0, -1).join('/');
+      const parent = nodesByPath[parentPath];
+      if (parent) {
+        parent.children = parent.children || [];
+        parent.children.push(node);
+      } else {
+        root.push(node);
+      }
+    } else {
+      root.push(node);
+    }
+  });
+
+  // Sort
+  const sortNodes = (nodes: TreeNode[]) => {
+    nodes.sort((a, b) => a.name.localeCompare(b.name));
+    nodes.forEach(n => {
+        if (n.children) sortNodes(n.children);
+    });
+  };
+  sortNodes(root);
+
+  return root;
+}
 
 /* --- HELPER COMPONENTS --- */
 function Caret({ open }: { open: boolean }) {
@@ -16,7 +66,7 @@ function FolderIcon({ open }: { open: boolean }) {
     <svg 
       className="h-4 w-4 text-blue-400 shrink-0" 
       viewBox="0 0 24 24" 
-      fill={open ? "currentColor" : "none"} 
+      fill={open ? "none" : "currentColor"} 
       stroke="currentColor" 
       strokeWidth="2"
     >
@@ -36,29 +86,14 @@ function filterTree(nodes: TreeNode[], term: string): TreeNode[] {
     .map((node): TreeNode | null => {
       const matchesSelf = node.name.toLowerCase().includes(term.toLowerCase());
       const filteredChildren = node.children ? filterTree(node.children, term) : undefined;
-      
       const hasMatchingChildren = filteredChildren && filteredChildren.length > 0;
 
       if (matchesSelf || hasMatchingChildren) {
-        return {
-          ...node,
-          children: filteredChildren 
-        };
+        return { ...node, children: filteredChildren };
       }
       return null;
     })
     .filter((n): n is TreeNode => n !== null);
-}
-
-function getAllFolderIds(nodes: TreeNode[]): string[] {
-  let ids: string[] = [];
-  nodes.forEach(node => {
-    if (node.children) {
-      ids.push(node.id);
-      ids = [...ids, ...getAllFolderIds(node.children)];
-    }
-  });
-  return ids;
 }
 
 /* --- COMPONENTS --- */
@@ -73,10 +108,20 @@ type ItemProps = {
 };
 
 function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentPath }: ItemProps) {
-  const isFolder = !!node.children; 
-  const open = !!expanded[node.id];
-  const fullPath = parentPath ? `${parentPath}/${node.id}` : node.id;
-  const selected = selectedId === node.id;
+  const isFolder = !!node.children && node.children.length > 0; 
+  
+  const myPath = node.isRoot 
+    ? "" 
+    : parentPath 
+        ? `${parentPath}/${node.id}` 
+        : node.id;
+
+  const uniqueId = node.isRoot ? "ROOT" : myPath;
+  const open = !!expanded[uniqueId];
+  
+  const selected = node.isRoot 
+    ? selectedId === undefined || selectedId === "" 
+    : selectedId === node.id; 
 
   return (
     <div>
@@ -87,30 +132,43 @@ function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentP
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (isFolder) toggle(node.id);
+            if (isFolder || node.isRoot) toggle(uniqueId);
           }}
           className={`flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors ${
-            isFolder 
+            (isFolder || node.isRoot)
               ? "hover:bg-white/10 hover:text-white cursor-pointer" 
               : "cursor-default"
           }`}
         >
-          {isFolder ? <Caret open={open} /> : <div className="size-3" />}
+          {(isFolder || node.isRoot) ? <Caret open={open} /> : <div className="size-3" />}
         </button>
 
         <button
-          onClick={() => onSelect(node, fullPath)}
+          onClick={() => onSelect(node, myPath)}
           className="flex flex-1 items-center gap-2 truncate px-1 py-1 text-left rounded-sm cursor-pointer"
         >
-          <FolderIcon open={!open} />
+          {node.isRoot ? (
+             <Icon className="size-4 text-blue-400 shrink-0"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
+          ) : (
+             <FolderIcon open={open || selected} />
+          )}
           <span className="truncate">{node.name}</span>
         </button>
       </div>
 
-      {isFolder && open && node.children && (
+      {(isFolder || node.isRoot) && open && node.children && (
         <div>
           {node.children.map((child) => (
-            <TreeItem key={child.id} node={child} depth={depth + 1} expanded={expanded} toggle={toggle} selectedId={selectedId} onSelect={onSelect} parentPath={fullPath} />
+            <TreeItem 
+                key={child.id} 
+                node={child} 
+                depth={depth + 1} 
+                expanded={expanded} 
+                toggle={toggle} 
+                selectedId={selectedId} 
+                onSelect={onSelect} 
+                parentPath={myPath} 
+            />
           ))}
         </div>
       )}
@@ -118,37 +176,65 @@ function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentP
   );
 }
 
-export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] }) {
+export default function FolderSidebar() {
   const router = useRouter();
   const params = useSearchParams();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ assets: true, scenes: true });
+  const { currentRepo } = useRepo(); 
+
+  const [treeData, setTreeData] = useState<TreeNode[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ "ROOT": true }); 
   const [searchTerm, setSearchTerm] = useState("");
   
   const currentPath = params.get("path");
   const currentId = currentPath ? currentPath.split("/").pop() : undefined;
 
-  const filteredTree = useMemo(() => {
-    return filterTree(tree, searchTerm);
-  }, [tree, searchTerm]);
-
-  // Auto-expand when searching
+  // FETCH TREE
   useEffect(() => {
-    if (searchTerm.trim()) {
-      const allIds = getAllFolderIds(filteredTree);
-      const expandedMap = allIds.reduce((acc, id) => ({ ...acc, [id]: true }), {});
-      setExpanded((prev) => ({ ...prev, ...expandedMap }));
+    async function fetchTree() {
+        if (!currentRepo) return;
+        setLoading(true);
+        // FIXED: Reset expansion when repo changes
+        setExpanded({ "ROOT": true }); 
+        
+        try {
+            const res = await fetch(`/api/git/tree?owner=${currentRepo.owner}&repo=${currentRepo.name}`);
+            if (res.ok) {
+                const data = await res.json();
+                const builtTree = buildTreeFromPaths(data.tree);
+                
+                const rootNode: TreeNode = {
+                    id: "ROOT",
+                    name: currentRepo.name, 
+                    children: builtTree,
+                    isRoot: true
+                };
+                
+                setTreeData([rootNode]);
+            }
+        } catch (error) {
+            console.error("Failed to load folder structure", error);
+        } finally {
+            setLoading(false);
+        }
     }
-  }, [filteredTree, searchTerm]);
+    fetchTree();
+  }, [currentRepo]);
 
-  // Auto-expand and sync when URL path changes
+  const filteredTree = useMemo(() => {
+    return filterTree(treeData, searchTerm);
+  }, [treeData, searchTerm]);
+
+  // Auto-expand on navigate
   useEffect(() => {
     if (currentPath) {
-      const parts = currentPath.split("/"); // e.g. ["assets", "chars"]
+      const parts = currentPath.split("/"); 
       setExpanded(prev => {
-        const next = { ...prev };
-        // Mark every folder in the path as expanded
-        parts.forEach(id => {
-           next[id] = true;
+        const next = { ...prev, "ROOT": true };
+        let accum = "";
+        parts.forEach((part, i) => {
+           accum += (i === 0 ? "" : "/") + part;
+           next[accum] = true;
         });
         return next;
       });
@@ -159,7 +245,11 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
   
   const onSelect = (node: TreeNode, fullPath: string) => {
     const qp = new URLSearchParams(params.toString());
-    qp.set("path", fullPath);
+    if (fullPath === "") {
+        qp.delete("path"); // Root = no path param
+    } else {
+        qp.set("path", fullPath);
+    }
     router.push(`/?${qp.toString()}`);
   };
 
@@ -183,7 +273,9 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
       </div>
       
       <div className="flex-1 overflow-y-auto px-2">
-        {filteredTree.length > 0 ? (
+        {loading ? (
+            <div className="text-xs text-gray-500 text-center py-4">Loading structure...</div>
+        ) : filteredTree.length > 0 ? (
           filteredTree.map((n) => (
             <TreeItem 
                 key={n.id} 
@@ -191,13 +283,15 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
                 depth={0} 
                 expanded={expanded} 
                 toggle={toggle} 
-                selectedId={currentId} // Pass the URL-derived ID
+                selectedId={currentId} 
                 onSelect={onSelect} 
                 parentPath="" 
             />
           ))
         ) : (
-          <div className="text-xs text-gray-500 text-center py-4">No folders found</div>
+          <div className="text-xs text-gray-500 text-center py-4">
+             {currentRepo ? "No folders found" : "Select a repository"}
+          </div>
         )}
       </div>
     </aside>
