@@ -32,12 +32,17 @@ export async function GET(
         .select(`
             *,
             comments:comments_file_id_fkey (
-              comment_id,
-              github_id,
-              message,
-              created_at
+            comment_id,
+            github_id,
+            message,
+            created_at,
+            user:users!comments_github_id_fkey (
+                github_id,
+                username,
+                avatar_url
             )
-          `)
+            )
+        `)
         .eq("repo_id", repoData.id)
         .eq("path", path)
         .single();
