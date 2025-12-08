@@ -12,6 +12,7 @@ export default function OverviewPage() {
         
         <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-white">Repository Overview</h1>
+            {/* Mock Settings */}
             <a 
                 href="https://github.com/Example-User/Checkpoint-Project/settings" 
                 target="_blank" 
@@ -83,6 +84,7 @@ export default function OverviewPage() {
                         </div>
                     </div>
                     <div className="pt-2 border-t border-default">
+                        {/* Mock Invite */}
                         <a href="https://github.com/Example-User/Checkpoint-Project/settings/access" target="_blank" rel="noopener noreferrer">
                         <button className="text-xs text-blue-400 hover:underline w-full text-left">
                             + Invite people

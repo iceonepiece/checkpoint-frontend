@@ -36,7 +36,7 @@ export const RECENT_ACTIVITY: ActivityItem[] = [
   { id: "e5", user: "EnvArtist_01", avatar: "EA", action: "commented", target: "Rock_04 UVs", time: "3 days ago" },
 ];
 
-// Generate deterministic heatmap data
+// Generate fake heatmap data
 export const HEATMAP_DATA: ContributionDay[] = Array.from({ length: 364 }).map((_, i) => {
   // Create a fake pattern
   const date = new Date();

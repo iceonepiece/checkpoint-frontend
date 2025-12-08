@@ -25,7 +25,7 @@ export default function ReviewPanel({ status, onStatusChange, comments, onAddCom
   return (
     <div className="space-y-6 pb-6">
       
-      {/* Panel 1: Status Control */}
+      {/* TOP: Asset Status */}
       <Card className="p-4 space-y-3 bg-card border-default">
         <SectionTitle>Asset Status</SectionTitle>
         <div>
@@ -41,7 +41,7 @@ export default function ReviewPanel({ status, onStatusChange, comments, onAddCom
         </div>
       </Card>
 
-      {/* Panel 2: Conversation */}
+      {/* BOTTOM: Comment Section */}
       <Card className="p-4 space-y-4 bg-card border-default">
         <SectionTitle>Comments</SectionTitle>
 

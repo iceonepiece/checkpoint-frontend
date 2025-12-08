@@ -200,7 +200,7 @@ export default function AssetPage(props: Params) {
                 </div>
             </div>
 
-            {/* Right: Review Panel (Now fully connected to Asset Data) */}
+            {/* Right: Review Panel */}
             <div>
                 <ReviewPanel 
                     status={asset.status} 

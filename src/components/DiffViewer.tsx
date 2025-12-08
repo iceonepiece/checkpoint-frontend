@@ -58,8 +58,7 @@ export default function DiffViewer({ before, after, type }: Props) {
       onTouchMove={handleDrag}
       onClick={handleDrag}
     >
-      {/* 1. Background Image (New/After) */}
-      {/* It sits fully behind everything */}
+      {/* Background Image (New) */}
       <img 
         src={after} 
         alt="New" 
@@ -69,8 +68,7 @@ export default function DiffViewer({ before, after, type }: Props) {
         New (Head)
       </div>
 
-      {/* 2. Foreground Image (Old/Before) */}
-      {/* It sits on top but is masked by clip-path. This ensures it never squashes. */}
+      {/* Foreground Image (Old) */}
       <div 
         className="absolute inset-0 w-full h-full pointer-events-none"
         style={{ 
@@ -91,7 +89,7 @@ export default function DiffViewer({ before, after, type }: Props) {
         <div className="absolute right-0 top-0 bottom-0 w-[1px] bg-white/50"></div>
       </div>
 
-      {/* 3. Interactive Slider Handle */}
+      {/* Slider Handle */}
       <div 
         className="absolute inset-y-0"
         style={{ left: `${sliderPos}%` }}

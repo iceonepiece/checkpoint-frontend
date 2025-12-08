@@ -20,6 +20,7 @@ export default function TopNav() {
     { label: "Pull requests", href: "https://github.com/iceonepiece/checkpoint-frontend/pulls", external: true },
     { label: "Settings", href: "https://github.com/iceonepiece/checkpoint-frontend/settings", external: true },
   ];
+
   // -----Real-----
   // const tabs = [
   //   { label: "Overview", href: "/overview" },
@@ -33,6 +34,7 @@ export default function TopNav() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-default bg-[var(--bg-header)] backdrop-blur">
+      {/* Header */}
       <div className="h-14 px-4 flex items-center gap-4">
 
         {/* LEFT: Site Logo & Name */}
@@ -54,10 +56,12 @@ export default function TopNav() {
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div className="flex items-center gap-1 truncate">
+                  <div className="size-2 rounded-full bg-green-500"/>
+                  <span></span>
                   <span className="text-gray-400 font-normal shrink-0">{currentRepo.owner} /</span>
                   <span className="truncate">{currentRepo.name}</span>
                 </div>
-                <span className="rounded-full border border-default px-2 py-0.5 text-[10px] text-gray-400 shrink-0 font-medium">
+                <span className="rounded-full border border-default px-2 py-0.5 pt-1 text-[10px] text-gray-400 shrink-0 font-medium">
                   {currentRepo.private ? "Private" : "Public"}
                 </span>
               </div>

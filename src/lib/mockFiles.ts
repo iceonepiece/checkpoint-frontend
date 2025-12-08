@@ -9,7 +9,7 @@ export type FileItem = {
   lockedBy?: string;
   lockedAt?: string;
   folderId?: string;
-  path?: string; // <--- ADDED THIS LINE
+  path?: string;
 };
 
 export const MOCK_FILES: FileItem[] = [

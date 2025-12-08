@@ -82,9 +82,8 @@ export default function ActivityHeatmap({ data }: { data: ContributionDay[] }) {
 
         {/* Main Scrollable Area */}
         <div className="flex-1 overflow-x-auto pt-6 pb-2">
-          {/* FIXED: Added 'w-fit mx-auto' to center the chart if there is extra space */}
           <div className="flex gap-1 min-w-max w-fit mx-auto">
-            {/* Left Axis: Day Labels */}
+            {/* Day Labels */}
             <div className="flex flex-col justify-end gap-1 pb-2 text-[10px] text-gray-500 pr-2">
               <span className="h-3"></span>
               <span className="h-3">Mon</span>

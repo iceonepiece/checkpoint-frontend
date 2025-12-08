@@ -29,7 +29,6 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-lg rounded-xl surface-card p-6 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
-        {/* ... (Copy content from your previous UploadModal) ... */}
         <div>
           <h2 className="text-lg font-semibold text-white">Upload Asset</h2>
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">

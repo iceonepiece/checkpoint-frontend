@@ -13,19 +13,25 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
   const lockTooltip = isLocked ? `Locked by ${file.lockedBy} on ${lockDate}` : "";
 
   return (
-    <div className={`group grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] items-center gap-3 px-2 py-2 hover:bg-card-hover border-b border-default/50 last:border-0 ${selected ? "bg-card-hover" : ""}`}>
-      <CustomCheckbox checked={selected} onChange={onToggle} />
+    <div 
+        onClick={onToggle}
+        className={`group grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] items-center gap-3 px-2 py-2 hover:bg-card-hover border-b border-default/50 last:border-0 cursor-pointer ${selected ? "bg-card-hover" : ""}`}
+    >
+      {/* Selection Checkbox */}
+      <div className="z-30 flex items-center pb-1">
+          <CustomCheckbox checked={selected} onChange={onToggle} />
+      </div>
       
       {/* Icon & Name */}
       <div className="flex min-w-0 items-center gap-3">
         <div className="grid size-8 place-items-center rounded-md bg-background text-gray-400 border border-default relative">
           {file.isFolder ? (
-             <Icon className="size-4"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
+             <Icon className="size-4" fill="currentColor"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
           ) : (
              <span className="text-[10px] font-bold">{file.name.split('.').pop()?.substring(0,3).toUpperCase()}</span>
           )}
           
-          {/* Lock Badge on Icon */}
+          {/* Lock Icon */}
           {isLocked && (
             <div className="absolute -top-1 -right-2 bg-red-500 rounded-md p-0.5 border border-background z-10" title={lockTooltip}>
               <LockIcon className="size-4 text-white" />
@@ -34,7 +40,11 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
         </div>
         
         <div className="min-w-0">
-          <Link href={file.isFolder ? `/?path=${file.path}` : `/asset/${file.id}`} className="truncate font-medium text-gray-200 hover:underline">
+          <Link 
+            href={file.isFolder ? `/?path=${file.path}` : `/asset/${file.id}`} 
+            onClick={(e) => e.stopPropagation()}
+            className="truncate font-medium text-gray-200 hover:underline"
+          >
             {file.name}
           </Link>
         </div>
@@ -62,7 +72,7 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
         {fmtBytes(file.sizeBytes)}
       </div>
 
-      {/* Actions */}
+      {/* Kebab Menu (Optional) */}
       {/* <div className="ml-auto">
         <Button variant="ghost" size="icon"><Kebab /></Button>
       </div> */}

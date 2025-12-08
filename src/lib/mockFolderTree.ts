@@ -2,7 +2,6 @@ export type TreeNode = {
   id: string;
   name: string;
   children?: TreeNode[];
-  // New fields for locking
   lockedBy?: string;
   lockedAt?: string; 
 };
@@ -77,7 +76,6 @@ export const MOCK_TREE: TreeNode[] = [
   {
       id: "settings",
       name: "ProjectSettings",
-      // Example: This folder comes 'pre-locked' from the database
       lockedBy: "Admin",
       lockedAt: "2024-01-01T00:00:00Z",
       children: [

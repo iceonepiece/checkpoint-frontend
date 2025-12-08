@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui";
 import { MOCK_TREE, TreeNode } from "@/lib/mockFolderTree";
 
-// Utility to flatten folders (Defined here to keep it self-contained)
+/* ---------- UTILITIES ---------- */
 function flattenFolders(nodes: TreeNode[], parentPath = "assets"): { id: string; path: string }[] {
   let folders: { id: string; path: string }[] = [];
   nodes.forEach(node => {

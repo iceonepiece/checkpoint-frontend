@@ -13,7 +13,10 @@ export function AssetCard({ file, selected, onToggle, size }: { file: FileItem, 
   const lockTooltip = isLocked ? `Locked by ${file.lockedBy} on ${lockDate}` : "";
 
   return (
-    <div className={`group relative overflow-hidden rounded-xl border transition hover:shadow-md hover:shadow-black/30 surface-card ${selected ? "ring-2 ring-blue-500 border-transparent" : "border-default"}`}>
+    <div 
+      onClick={onToggle}
+      className={`group relative overflow-hidden rounded-xl border transition hover:shadow-md hover:shadow-black/30 surface-card cursor-pointer ${selected ? "ring-2 ring-blue-500 border-transparent" : "border-default"}`}
+    >
       
       {/* Checkbox */}
       <div className="absolute left-2 top-2 z-30 flex gap-2">
@@ -22,15 +25,18 @@ export function AssetCard({ file, selected, onToggle, size }: { file: FileItem, 
       
       {/* Lock Indicator */}
       {isLocked && (
-        <div className="absolute left-2 top-10 z-30" title={lockTooltip}>
+        <div className="absolute left-2 top-8 z-30" title={lockTooltip}>
           <div className="bg-red-500/90 text-white p-1 rounded-md shadow-sm">
-            <LockIcon className="size-4" />
+            <LockIcon className="size-3" />
           </div>
         </div>
       )}
 
-      {/* Menu Button */}
-      {/* <button className="absolute right-2 top-2 z-30 rounded-md p-1 text-gray-400 hover:bg-black/50">
+      {/* Kebab Menu */}
+      {/* <button 
+        onClick={(e) => e.stopPropagation()} // Stop bubbling
+        className="absolute right-2 top-2 z-30 rounded-md p-1 text-gray-400 hover:bg-black/50"
+      >
         <Kebab />
       </button> */}
 
@@ -41,7 +47,6 @@ export function AssetCard({ file, selected, onToggle, size }: { file: FileItem, 
             <Icon className="size-8"><path d="M3 7h5l2 2h11v10H3z" /></Icon>
           </div>
         ) : file.thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={file.thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="h-full w-full grid place-items-center text-gray-500">
@@ -49,7 +54,6 @@ export function AssetCard({ file, selected, onToggle, size }: { file: FileItem, 
           </div>
         )}
         
-        {/* Dark Overlay if Locked */}
         {isLocked && (
            <div className="absolute inset-0 bg-black/40 grid place-items-center" title={lockTooltip}>
              <div className="text-red-400 font-semibold text-xs bg-black/60 px-2 py-1 rounded border border-red-500/30 flex items-center gap-1">
@@ -65,6 +69,7 @@ export function AssetCard({ file, selected, onToggle, size }: { file: FileItem, 
         <div className="min-w-0 flex-1">
           <Link 
             href={file.isFolder ? `/?path=${file.path}` : `/asset/${file.id}`} 
+            onClick={(e) => e.stopPropagation()}
             className="truncate text-[15px] font-medium text-gray-200 hover:underline block"
             title={file.name}
           >

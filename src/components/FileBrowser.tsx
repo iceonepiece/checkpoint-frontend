@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { Button, Card } from "@/components/ui";
@@ -8,10 +8,10 @@ import { Icon } from "@/components/Icon";
 import { MOCK_FILES, type FileItem } from "@/lib/mockFiles";
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
 
-// UPDATED IMPORTS: Using the correct file-browser components
+// IMPORTS: file-browser components
 import { AssetCard } from "./file-browser/AssetCard";
 import { AssetRow } from "./file-browser/AssetRow";
-import { FolderCard } from "./file-browser/FolderCard"; // New component
+import { FolderCard } from "./file-browser/FolderCard";
 import { SelectionBar } from "./file-browser/SelectionBar";
 import { UploadModal } from "./file-browser/modals/UploadModal";
 import { DeleteModal } from "./file-browser/modals/DeleteModal";
@@ -57,7 +57,6 @@ function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
 }
 
 /* ---------- MAIN COMPONENT ---------- */
-
 export default function FileBrowser() {
   const [view, setView] = useState<ViewMode>("grid");
   const [files, setFiles] = useState<FileItem[]>(MOCK_FILES);
@@ -76,7 +75,12 @@ export default function FileBrowser() {
   const currentPath = searchParams.get("path") || "assets"; 
   const currentFolderId = currentPath.split("/").pop() || "assets";
 
-  // 1. Get Subfolders
+  // Clear selection whenever the path changes
+  useEffect(() => {
+    setSelected({});
+  }, [currentPath]);
+
+  // Get Subfolders
   const folderNode = findNode(MOCK_TREE, currentFolderId);
   const subFolders = folderNode?.children?.map(child => {
       const lockData = folderLocks[child.id];
@@ -94,7 +98,7 @@ export default function FileBrowser() {
       };
   }) || [];
 
-  // 2. Get Files
+  // Get Files
   const currentFiles = files.filter(f => f.folderId === currentFolderId).map(f => ({
       ...f,
       currentPath: currentPath 
@@ -223,7 +227,7 @@ export default function FileBrowser() {
       ) : view === "grid" ? (
         <div className="space-y-6 pb-20">
           
-          {/* SECTION 1: FOLDERS */}
+          {/* SECTION: FOLDERS */}
           {subFolders.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Folders</h3>
@@ -235,7 +239,7 @@ export default function FileBrowser() {
             </div>
           )}
 
-          {/* SECTION 2: FILES */}
+          {/* SECTION: FILES */}
           {currentFiles.length > 0 && (
             <div>
               {subFolders.length > 0 && <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Files</h3>}
@@ -264,6 +268,7 @@ export default function FileBrowser() {
         </Card>
       )}
       
+      {/* MODALS */}
       <UploadModal isOpen={isUploadOpen} onClose={() => setUploadOpen(false)} currentPath={currentPath} existingFiles={files} onUpload={handleUpload} />
       <DeleteModal isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} selectedCount={Object.values(selected).filter(Boolean).length} onConfirm={handleDelete} />
       <MoveModal isOpen={isMoveOpen} onClose={() => setMoveOpen(false)} selectedCount={Object.values(selected).filter(Boolean).length} onConfirm={handleMove} />

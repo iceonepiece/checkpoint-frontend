@@ -7,15 +7,11 @@ import { MOCK_TREE } from "@/lib/mockFolderTree";
 import { Icon } from "@/components/Icon"; 
 
 /* --- HELPER COMPONENTS --- */
-
 function Caret({ open }: { open: boolean }) {
   return <svg className={`h-3 w-3 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>;
 }
 
 function FolderIcon({ open }: { open: boolean }) {
-  // FIXED: Updated the 'closed' path (else branch) to include the right vertical line (v8)
-  // Before: ...h11M3 7v10h18 (Missing connection)
-  // After:  ...h11v8H3z      (Fully closed box)
   return (
     <svg 
       className="h-4 w-4 text-blue-400 shrink-0" 
@@ -33,7 +29,6 @@ function FolderIcon({ open }: { open: boolean }) {
 }
 
 /* --- FILTER LOGIC --- */
-
 function filterTree(nodes: TreeNode[], term: string): TreeNode[] {
   if (!term) return nodes;
   
@@ -67,7 +62,6 @@ function getAllFolderIds(nodes: TreeNode[]): string[] {
 }
 
 /* --- COMPONENTS --- */
-
 type ItemProps = {
   node: TreeNode;
   depth: number;
@@ -132,12 +126,12 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
   
   const currentPath = params.get("path");
   const currentId = currentPath ? currentPath.split("/").pop() : undefined;
-  const [selectedId, setSelectedId] = useState<string | undefined>(currentId);
 
   const filteredTree = useMemo(() => {
     return filterTree(tree, searchTerm);
   }, [tree, searchTerm]);
 
+  // Auto-expand when searching
   useEffect(() => {
     if (searchTerm.trim()) {
       const allIds = getAllFolderIds(filteredTree);
@@ -146,10 +140,24 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
     }
   }, [filteredTree, searchTerm]);
 
+  // Auto-expand and sync when URL path changes
+  useEffect(() => {
+    if (currentPath) {
+      const parts = currentPath.split("/"); // e.g. ["assets", "chars"]
+      setExpanded(prev => {
+        const next = { ...prev };
+        // Mark every folder in the path as expanded
+        parts.forEach(id => {
+           next[id] = true;
+        });
+        return next;
+      });
+    }
+  }, [currentPath]);
+
   const toggle = (id: string) => setExpanded((m) => ({ ...m, [id]: !m[id] }));
   
   const onSelect = (node: TreeNode, fullPath: string) => {
-    setSelectedId(node.id);
     const qp = new URLSearchParams(params.toString());
     qp.set("path", fullPath);
     router.push(`/?${qp.toString()}`);
@@ -177,7 +185,16 @@ export default function FolderSidebar({ tree = MOCK_TREE }: { tree?: TreeNode[] 
       <div className="flex-1 overflow-y-auto px-2">
         {filteredTree.length > 0 ? (
           filteredTree.map((n) => (
-            <TreeItem key={n.id} node={n} depth={0} expanded={expanded} toggle={toggle} selectedId={selectedId} onSelect={onSelect} parentPath="" />
+            <TreeItem 
+                key={n.id} 
+                node={n} 
+                depth={0} 
+                expanded={expanded} 
+                toggle={toggle} 
+                selectedId={currentId} // Pass the URL-derived ID
+                onSelect={onSelect} 
+                parentPath="" 
+            />
           ))
         ) : (
           <div className="text-xs text-gray-500 text-center py-4">No folders found</div>

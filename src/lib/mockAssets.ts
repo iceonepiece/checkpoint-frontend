@@ -15,7 +15,7 @@ export type Asset = {
   versions: { id: string; label: string; date: string }[];
   status: "Needs changes" | "Pending" | "Approved";
   lockedBy?: string;
-  comments: Comment[]; // NEW: Comments are now part of the asset data
+  comments: Comment[];
 };
 
 export const MOCK_ASSETS: Record<string, Asset> = {
