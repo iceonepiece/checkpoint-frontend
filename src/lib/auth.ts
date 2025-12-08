@@ -6,6 +6,7 @@ export type AuthUser = {
   id: number;
   username: string;
   avatar_url: string;
+  github_id: number;
 };
 
 export async function authenticate() {
