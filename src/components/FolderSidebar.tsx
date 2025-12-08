@@ -18,14 +18,12 @@ function buildTreeFromPaths(items: { path: string }[]): TreeNode[] {
   const root: TreeNode[] = [];
   const nodesByPath: Record<string, TreeNode> = {};
 
-  // 1. Create nodes
   items.forEach(item => {
     const parts = item.path.split('/');
     const name = parts[parts.length - 1];
     nodesByPath[item.path] = { id: name, name: name, children: [] };
   });
 
-  // 2. Build hierarchy
   items.forEach(item => {
     const node = nodesByPath[item.path];
     const parts = item.path.split('/');
@@ -44,7 +42,6 @@ function buildTreeFromPaths(items: { path: string }[]): TreeNode[] {
     }
   });
 
-  // Sort
   const sortNodes = (nodes: TreeNode[]) => {
     nodes.sort((a, b) => a.name.localeCompare(b.name));
     nodes.forEach(n => {
@@ -66,7 +63,7 @@ function FolderIcon({ open }: { open: boolean }) {
     <svg 
       className="h-4 w-4 text-blue-400 shrink-0" 
       viewBox="0 0 24 24" 
-      fill={open ? "none" : "currentColor"} 
+      fill={open ? "currentColor" : "none"} 
       stroke="currentColor" 
       strokeWidth="2"
     >
@@ -158,17 +155,23 @@ function TreeItem({ node, depth, expanded, toggle, selectedId, onSelect, parentP
 
       {(isFolder || node.isRoot) && open && node.children && (
         <div>
-          {node.children.map((child) => (
-            <TreeItem 
+          {node.children.map((child, index) => (
+            // ADDED: Wrapper div with staggered animation
+            <div 
                 key={child.id} 
-                node={child} 
-                depth={depth + 1} 
-                expanded={expanded} 
-                toggle={toggle} 
-                selectedId={selectedId} 
-                onSelect={onSelect} 
-                parentPath={myPath} 
-            />
+                className="opacity-0 animate-fade-in-up" 
+                style={{ animationDelay: `${index * 0.03}s` }}
+            >
+                <TreeItem 
+                    node={child} 
+                    depth={depth + 1} 
+                    expanded={expanded} 
+                    toggle={toggle} 
+                    selectedId={selectedId} 
+                    onSelect={onSelect} 
+                    parentPath={myPath} 
+                />
+            </div>
           ))}
         </div>
       )}
@@ -194,7 +197,6 @@ export default function FolderSidebar() {
     async function fetchTree() {
         if (!currentRepo) return;
         setLoading(true);
-        // FIXED: Reset expansion when repo changes
         setExpanded({ "ROOT": true }); 
         
         try {
@@ -230,7 +232,9 @@ export default function FolderSidebar() {
     if (currentPath) {
       const parts = currentPath.split("/"); 
       setExpanded(prev => {
-        const next = { ...prev, "ROOT": true };
+        // FIXED: Explicitly type 'next' so TypeScript knows it can accept any string key
+        const next: Record<string, boolean> = { ...prev, "ROOT": true };
+        
         let accum = "";
         parts.forEach((part, i) => {
            accum += (i === 0 ? "" : "/") + part;
@@ -272,21 +276,31 @@ export default function FolderSidebar() {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto px-2">
+      {/* Container with key to restart animation on repo change */}
+      <div 
+        key={currentRepo?.id}
+        className="flex-1 overflow-y-auto px-2"
+      >
         {loading ? (
             <div className="text-xs text-gray-500 text-center py-4">Loading structure...</div>
         ) : filteredTree.length > 0 ? (
-          filteredTree.map((n) => (
-            <TreeItem 
+          filteredTree.map((n, i) => (
+            // ADDED: Wrapper div with staggered animation for Top Level
+            <div 
                 key={n.id} 
-                node={n} 
-                depth={0} 
-                expanded={expanded} 
-                toggle={toggle} 
-                selectedId={currentId} 
-                onSelect={onSelect} 
-                parentPath="" 
-            />
+                className="opacity-0 animate-fade-in-up" 
+                style={{ animationDelay: `${i * 0.05}s` }}
+            >
+                <TreeItem 
+                    node={n} 
+                    depth={0} 
+                    expanded={expanded} 
+                    toggle={toggle} 
+                    selectedId={currentId} 
+                    onSelect={onSelect} 
+                    parentPath="" 
+                />
+            </div>
           ))
         ) : (
           <div className="text-xs text-gray-500 text-center py-4">

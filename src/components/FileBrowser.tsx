@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation"; // Added useRouter
+import { useSearchParams, useRouter } from "next/navigation"; 
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { Button, Card } from "@/components/ui";
 import { Icon } from "@/components/Icon"; 
@@ -9,7 +9,6 @@ import { type FileItem } from "@/lib/mockFiles";
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
 import { useRepo } from "@/lib/RepoContext";
 
-// IMPORTS: components
 import { AssetCard } from "./file-browser/AssetCard";
 import { AssetRow } from "./file-browser/AssetRow";
 import { FolderCard } from "./file-browser/FolderCard";
@@ -20,7 +19,7 @@ import { MoveModal } from "./file-browser/modals/MoveModal";
 
 type ViewMode = "grid" | "list";
 
-// ... (Keep existing Utilities: getFileType, findNode, getBreadcrumbs) ...
+// --- UTILITIES ---
 function getFileType(fileName: string, type: string) {
   if (type === "dir") return "folder";
   const ext = fileName.split('.').pop()?.toLowerCase();
@@ -57,7 +56,7 @@ function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
 
 /* ---------- MAIN COMPONENT ---------- */
 export default function FileBrowser() {
-  const router = useRouter(); // Added router for fallback navigation
+  const router = useRouter(); 
   const [view, setView] = useState<ViewMode>("grid");
   const { currentRepo } = useRepo();
 
@@ -86,10 +85,8 @@ export default function FileBrowser() {
 
       const res = await fetch(endpoint);
       
-      // FIXED: Handle 404 gracefully (happens during repo switch)
+      // Handle 404 gracefully (happens during repo switch)
       if (res.status === 404) {
-        // If the folder doesn't exist in the new repo, go back to root
-        // This prevents the "Error: Failed to fetch" crash
         console.warn("Path not found in this repo, redirecting to root...");
         setFiles([]); 
         setLoading(false);
@@ -138,7 +135,52 @@ export default function FileBrowser() {
   const toggleOne = (id: string) => setSelected((s) => ({ ...s, [id]: !s[id] }));
   const clearSelection = () => setSelected({});
 
-  // ... (Keep Handlers: handleDelete, handleMove, handleDownload, handleLock, handleUpload) ...
+  // --- HANDLERS ---
+
+  // NEW: Robust Download Handler
+  const handleDownload = async () => {
+    const selectedIds = Object.keys(selected).filter(k => selected[k]);
+    const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
+    
+    const validItems = itemsToDownload.filter(i => !i.isFolder && i.thumb);
+
+    if (validItems.length === 0) {
+       // Optional: Notify user if they tried to download folders or broken files
+       return;
+    }
+
+    // Process downloads sequentially to prevent browser blocking
+    for (const item of validItems) {
+        try {
+            // 1. Fetch the file as a Blob
+            const response = await fetch(item.thumb!);
+            if (!response.ok) throw new Error("Network response was not ok");
+            
+            const blob = await response.blob();
+            
+            // 2. Create a temporary URL
+            const url = window.URL.createObjectURL(blob);
+            
+            // 3. Trigger download via hidden anchor tag
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = item.name; // This forces the "Save As" behavior with correct name
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // 4. Cleanup
+            window.URL.revokeObjectURL(url);
+            
+        } catch (err) {
+            console.error(`Failed to download ${item.name}`, err);
+            // Fallback: If Blob fetch fails (e.g. CORS), open in new tab
+            if (item.thumb) window.open(item.thumb, '_blank');
+        }
+    }
+    clearSelection();
+  };
+
   const handleDelete = async (message: string) => {
     alert("Delete logic here");
     setDeleteOpen(false);
@@ -147,21 +189,6 @@ export default function FileBrowser() {
   const handleMove = async (targetId: string, message: string) => {
     alert("Move logic here");
     setMoveOpen(false);
-    clearSelection();
-  };
-  const handleDownload = () => {
-    const selectedIds = Object.keys(selected).filter(k => selected[k]);
-    const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
-    itemsToDownload.forEach(item => {
-        if (item.isFolder) return;
-        const link = document.createElement("a");
-        link.href = item.thumb || "#";
-        link.download = item.name;
-        link.target = "_blank"; 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    });
     clearSelection();
   };
   const handleLock = () => {
