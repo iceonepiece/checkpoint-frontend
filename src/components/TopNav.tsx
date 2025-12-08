@@ -85,7 +85,7 @@ export default function TopNav({ user }: { user: AuthUser }) {
         </div>
 
         <div className="flex-1 flex justify-center min-w-0 px-2 md:px-6">
-          <div className="relative w-full max-w-xl">
+          <div className="relative w-full">
             <button
               onClick={() => setRepoOpen(!repoOpen)}
               className="flex items-center justify-between w-full gap-2 text-sm font-medium text-gray-200 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-md transition-colors border border-transparent hover:border-default"
@@ -95,10 +95,12 @@ export default function TopNav({ user }: { user: AuthUser }) {
               ) : currentRepo ? (
                 <div className="flex items-center gap-2 min-w-0">
                     <div className="flex items-center gap-1 truncate">
+                    <div className="size-2 rounded-full bg-green-500"/>
+                    <span></span>
                     <span className="text-gray-400 font-normal shrink-0">{currentRepo.owner} /</span>
                     <span className="truncate">{currentRepo.name}</span>
                     </div>
-                    <span className="rounded-full border border-default px-2 py-0.5 text-[10px] text-gray-400 shrink-0 font-medium">
+                    <span className="rounded-full border border-default pt-1 px-2 py-0.5 text-[10px] text-gray-400 shrink-0 font-medium">
                     {currentRepo.private ? "Private" : "Public"}
                     </span>
                 </div>

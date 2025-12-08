@@ -17,12 +17,10 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
         onClick={onToggle}
         className={`group grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] items-center gap-3 px-2 py-2 hover:bg-card-hover border-b border-default/50 last:border-0 cursor-pointer ${selected ? "bg-card-hover" : ""}`}
     >
-      {/* Selection Checkbox */}
       <div className="z-30 flex items-center pb-1">
           <CustomCheckbox checked={selected} onChange={onToggle} />
       </div>
       
-      {/* Icon & Name */}
       <div className="flex min-w-0 items-center gap-3">
         <div className="grid size-8 place-items-center rounded-md bg-background text-gray-400 border border-default relative">
           {file.isFolder ? (
@@ -31,7 +29,6 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
              <span className="text-[10px] font-bold">{file.name.split('.').pop()?.substring(0,3).toUpperCase()}</span>
           )}
           
-          {/* Lock Icon */}
           {isLocked && (
             <div className="absolute -top-1 -right-2 bg-red-500 rounded-md p-0.5 border border-background z-10" title={lockTooltip}>
               <LockIcon className="size-4 text-white" />
@@ -40,8 +37,9 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
         </div>
         
         <div className="min-w-0">
+          {/* CHANGED: Use encodeURIComponent(file.path) */}
           <Link 
-            href={file.isFolder ? `/?path=${file.path}` : `/asset/${file.id}`} 
+            href={file.isFolder ? `/?path=${file.path}` : `/asset/${encodeURIComponent(file.path || "")}`} 
             onClick={(e) => e.stopPropagation()}
             className="truncate font-medium text-gray-200 hover:underline"
           >
@@ -50,7 +48,6 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
         </div>
       </div>
 
-      {/* Type Column */}
       <div className="text-sm text-gray-400 hidden sm:block">
         {isLocked ? (
             <span className="text-red-400 flex items-center gap-1.5" title={lockTooltip}>
@@ -62,20 +59,13 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
         )}
       </div>
 
-      {/* Date Column */}
       <div className="text-sm text-gray-400 hidden md:block">
         {new Date(file.modifiedAt).toLocaleDateString()}
       </div>
 
-      {/* Size Column */}
       <div className="text-sm text-gray-400 hidden sm:block">
         {fmtBytes(file.sizeBytes)}
       </div>
-
-      {/* Kebab Menu (Optional) */}
-      {/* <div className="ml-auto">
-        <Button variant="ghost" size="icon"><Kebab /></Button>
-      </div> */}
     </div>
   );
 }
