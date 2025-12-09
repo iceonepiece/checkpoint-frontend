@@ -65,7 +65,6 @@ export async function POST(
         .maybeSingle();
 
     if (!fileRow) {
-    {
         const { data: newFile, error: createError } = await supabase
             .from("files")
             .upsert(
