@@ -82,7 +82,7 @@ export default function DiffViewer({ before, after, type }: Props) {
           className="absolute inset-0 w-full h-full object-contain" 
         />
         <div className="absolute top-2 left-2 bg-red-600/90 text-white text-xs px-2 py-1 rounded shadow-sm z-10 font-medium">
-          Old (v1)
+          Old
         </div>
         
         {/* Border line for the split */}

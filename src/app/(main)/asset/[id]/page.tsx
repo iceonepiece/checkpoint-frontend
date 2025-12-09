@@ -101,7 +101,7 @@ export default function AssetPage(props: Params) {
   const [isDownloading, setIsDownloading] = useState(false); 
   
   const [isLocking, setIsLocking] = useState(false);
-  const [isUpdateOpen, setUpdateOpen] = useState(false); // NEW STATE
+  const [isUpdateOpen, setUpdateOpen] = useState(false); 
   
   const [isExiting, setIsExiting] = useState(false);
 
@@ -109,7 +109,6 @@ export default function AssetPage(props: Params) {
   const [compareMode, setCompareMode] = useState(false);
   const [targetVersionId, setTargetVersionId] = useState<string>("");
 
-  // ... (keep useEffect for loadData) ...
   useEffect(() => {
     if (!resolvedParams) return;
     let isMounted = true;
@@ -376,12 +375,10 @@ export default function AssetPage(props: Params) {
     if (!currentRepo || !asset) return;
 
     const formData = new FormData();
-    // The UploadModal already renamed the file to match asset.name, so we just append it
     files.forEach(file => formData.append("files", file));
     formData.append("message", message);
     if (description) formData.append("description", description);
 
-    // Upload to the PARENT path (so file.name 'foo.png' goes into 'parent/foo.png')
     const uploadUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}/upload?path=${encodeURIComponent(parentPath)}`;
 
     try {
@@ -390,7 +387,6 @@ export default function AssetPage(props: Params) {
             const err = await res.json();
             throw new Error(err.error || "Update failed");
         }
-        // Force a page refresh or re-fetch to see new version
         window.location.reload(); 
     } catch (err) {
         console.error("Update error:", err);
@@ -415,7 +411,8 @@ export default function AssetPage(props: Params) {
   const targetVersionObj: AssetVersion | undefined = asset.versions.find(v => v.id === targetVersionId);
   const oldThumb = targetVersionObj?.thumb || "";
   const animationClass = isExiting ? "animate-fade-out-left" : "animate-fade-in-right opacity-0";
-  
+  const isBusy = isDownloading || isLocking;
+
   let lockLabel = "Lock";
   if (isLocking) { lockLabel = "Updating..."; } 
   else if (asset.lockedBy) { lockLabel = canUnlock ? "Unlock" : `Locked by ${asset.lockedBy}`; }
@@ -452,12 +449,12 @@ export default function AssetPage(props: Params) {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                {/* NEW: Update Button */}
                 <Button 
                     size="sm" 
                     variant="primary"
                     onClick={() => setUpdateOpen(true)}
-                    disabled={!canModify || isDownloading || isLocking}
+                    // CHANGED: Added infoLoading
+                    disabled={infoLoading || !canModify || isDownloading || isLocking}
                 >
                     Update New Version
                 </Button>
@@ -465,9 +462,17 @@ export default function AssetPage(props: Params) {
                 <Button size="sm" onClick={handleDownload} loading={isDownloading}>
                     {isDownloading ? "Downloading..." : "Download"}
                 </Button>
-                <Button size="sm" onClick={handleLock} loading={isLocking} disabled={!!asset.lockedBy && !canUnlock}>
+                
+                <Button 
+                    size="sm" 
+                    onClick={handleLock} 
+                    loading={isLocking} 
+                    // CHANGED: Added infoLoading
+                    disabled={infoLoading || (!!asset.lockedBy && !canUnlock)}
+                >
                     {lockLabel}
                 </Button>
+                
                 <Button 
                     size="sm" 
                     variant={compareMode ? "primary" : "default"}
@@ -504,7 +509,6 @@ export default function AssetPage(props: Params) {
             )}
         </Card>
 
-        {/* ... (Keep existing Content Grid & Review Panel) ... */}
         {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 pb-10">
             <div className="flex flex-col gap-4">
@@ -581,6 +585,7 @@ export default function AssetPage(props: Params) {
                 className={animationClass}
                 style={{ animationDelay: isExiting ? "0s" : "0.4s" }}
             >
+                {/* Check infoLoading for read-only panel too if strict consistency needed, but permission logic is safer */}
                 <div className={!canModify ? "opacity-70 pointer-events-none grayscale-[0.5]" : ""}>
                     <ReviewPanel 
                         isLoading={infoLoading}
@@ -599,14 +604,13 @@ export default function AssetPage(props: Params) {
             </div>
         </div>
         
-        {/* NEW: Upload Modal for Updates */}
         <UploadModal 
             isOpen={isUpdateOpen} 
             onClose={() => setUpdateOpen(false)} 
             currentPath={parentPath} 
-            existingFiles={[]} // Not needed for update
+            existingFiles={[]}
             onUpload={handleUpdate}
-            fixedFileName={asset.name} // This enables "Update Mode"
+            fixedFileName={asset.name}
         />
 
       </div>
