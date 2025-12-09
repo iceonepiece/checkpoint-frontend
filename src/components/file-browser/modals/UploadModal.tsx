@@ -21,12 +21,18 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
   const [isUploading, setIsUploading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
-  // Handle Enter/Exit Animation
+  // Handle Enter/Exit Animation & State Cleanup
   useEffect(() => {
     if (isOpen) {
         setIsVisible(true);
     } else {
-        const timer = setTimeout(() => setIsVisible(false), 300); 
+        // Wait for animation (300ms) then hide and clear state
+        const timer = setTimeout(() => {
+            setIsVisible(false);
+            setFiles([]);       // Clear files
+            setMessage("");     // Clear message
+            setDescription(""); // Clear description
+        }, 300); 
         return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -40,21 +46,35 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files.length > 0) {
           const newFiles = Array.from(e.target.files);
-          setFiles(newFiles);
-          // Auto-fill message if empty
-          if (!message) {
-              setMessage(newFiles.length === 1 
-                  ? `Add ${newFiles[0].name}` 
-                  : `Add ${newFiles.length} files`);
+          
+          // Append new files instead of replacing
+          const updatedFiles = [...files, ...newFiles];
+          setFiles(updatedFiles);
+
+          // Auto-fill message if empty or if it looks like a default message
+          if (!message || message.startsWith("Add ")) {
+              setMessage(updatedFiles.length === 1 
+                  ? `Add ${updatedFiles[0].name}` 
+                  : `Add ${updatedFiles.length} files`);
           }
       }
+      // Reset input so the same file can be selected again if needed
+      e.target.value = "";
   };
 
   const removeFile = (index: number) => {
       const newFiles = [...files];
       newFiles.splice(index, 1);
       setFiles(newFiles);
-      if (newFiles.length === 0) setMessage("");
+      
+      // Update message if we removed the last file
+      if (newFiles.length === 0) {
+          setMessage("");
+      } else if (message.startsWith("Add ")) {
+          setMessage(newFiles.length === 1 
+            ? `Add ${newFiles[0].name}` 
+            : `Add ${newFiles.length} files`);
+      }
   };
 
   const handleSubmit = async () => {
@@ -62,9 +82,9 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
     setIsUploading(true);
     await onUpload(files, message, description);
     setIsUploading(false);
-    setFiles([]);
-    setMessage("");
-    setDescription("");
+    
+    // We don't need to manually clear state here anymore
+    // The useEffect will handle it when onClose triggers the exit animation
     onClose();
   };
 
@@ -104,8 +124,9 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
             ) : (
                 <div className="flex flex-col items-center gap-2 w-full">
                     <div className="text-sm text-green-400 font-medium">{files.length} files selected</div>
-                    <label htmlFor="file-upload" className="text-xs text-gray-500 hover:text-white cursor-pointer underline">
-                        Change selection
+                    <label htmlFor="file-upload" className="text-xs text-gray-500 hover:text-white cursor-pointer underline flex items-center gap-1">
+                        <Icon className="size-3"><path d="M12 5v14M5 12h14"/></Icon>
+                        Click to add more files
                     </label>
                 </div>
             )}
