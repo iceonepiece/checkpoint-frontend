@@ -9,7 +9,22 @@ export type AuthUser = {
   github_id: number;
 };
 
-export async function authenticate() {
+export type AuthSuccess = {
+  ok: true;
+  user: AuthUser;
+  githubToken: string;
+  octokit: Octokit;
+};
+
+export type AuthFail = {
+  ok: false;
+  error: string;
+  status: number;
+};
+
+export type AuthResult = AuthSuccess | AuthFail;
+
+export async function authenticate(): Promise<AuthResult> {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session")?.value;
 

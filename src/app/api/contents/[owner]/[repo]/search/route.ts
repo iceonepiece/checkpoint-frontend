@@ -81,11 +81,10 @@ export async function GET(
     // 7. Return only GitHub data
     return NextResponse.json(filteredGitHubFiles);
 
-  } catch (err: any) {
-    console.error("Error:", err.message);
+  } catch (err) {
     return NextResponse.json(
-      { error: err.message ?? "Unknown error" },
-      { status: err.status ?? 500 }
+      { error: err },
+      { status:  500 }
     );
   }
 }

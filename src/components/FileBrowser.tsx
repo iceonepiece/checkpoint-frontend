@@ -102,7 +102,7 @@ export default function FileBrowser() {
       const data = await res.json();
       
       if (Array.isArray(data)) {
-        const mappedFiles: FileItem[] = data.map((item: any) => {
+        const mappedFiles: FileItem[] = data.map((item) => {
           const type = getFileType(item.name, item.type);
           return {
             id: item.path, 
@@ -328,7 +328,7 @@ export default function FileBrowser() {
             <div>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Folders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {subFolders.map((f: any, i) => (
+                {subFolders.map((f, i) => (
                   <div key={f.id} className="opacity-0 animate-fade-in-up" style={getDelayStyle(i)}>
                     <FolderCard file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} />
                   </div>
@@ -341,7 +341,7 @@ export default function FileBrowser() {
             <div>
               {subFolders.length > 0 && <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Files</h3>}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {currentFiles.map((f: any, i) => (
+                {currentFiles.map((f, i) => (
                   <div key={f.id} className="opacity-0 animate-fade-in-up" style={getDelayStyle(subFolders.length + i)}>
                     <AssetCard file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} size="cozy" />
                   </div>
@@ -363,7 +363,7 @@ export default function FileBrowser() {
              <span className="hidden sm:block">Size</span>
           </div>
           <div>
-            {[...subFolders, ...currentFiles].map((f: any, i) => (
+            {[...subFolders, ...currentFiles].map((f, i) => (
               <div key={f.id} className="opacity-0 animate-fade-in-up" style={getDelayStyle(i)}>
                 <AssetRow file={f} selected={!!selected[f.id]} onToggle={() => toggleOne(f.id)} />
               </div>

@@ -496,7 +496,7 @@ export default function AssetPage(props: Params) {
                                     <div className="flex flex-col min-w-0">
                                         <span className="font-medium truncate" title={v.label}>{v.label}</span>
                                         <span className="text-xs text-gray-500">
-                                            {new Date(v.date).toLocaleDateString()} • {v.id?.substring(0,7) ?? "—"} • {(v as any).author ?? "Unknown"}
+                                            {new Date(v.date).toLocaleDateString()} • {v.id?.substring(0,7) ?? "—"} • {v.author ?? "Unknown"}
                                         </span>
                                     </div>
                                     {!compareMode && asset.versions.indexOf(v) > 0 && (

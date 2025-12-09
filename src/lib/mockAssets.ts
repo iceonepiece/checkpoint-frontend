@@ -13,6 +13,7 @@ export type AssetVersion = {
   date: string;
   thumb?: string;      // Added
   sizeBytes?: number;  // Added
+  author?: string;
 };
 
 export type Asset = {

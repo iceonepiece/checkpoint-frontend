@@ -7,6 +7,14 @@ import { Icon } from "@/components/Icon";
 import type { AuthUser } from "@/lib/auth";
 import { useRepo, type Repo } from "@/lib/RepoContext";
 
+type GitHubRepoResponse = {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  owner: { login: string };
+};
+
 export default function TopNav({ user }: { user: AuthUser }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -39,8 +47,8 @@ export default function TopNav({ user }: { user: AuthUser }) {
       try {
         const res = await fetch("/api/repos");
         if (res.ok) {
-          const data = await res.json();
-          const mappedRepos: Repo[] = data.map((r: any) => ({
+          const data = (await res.json()) as GitHubRepoResponse[];
+          const mappedRepos: Repo[] = data.map((r) => ({
             id: r.id,
             owner: r.owner.login,
             name: r.name,
