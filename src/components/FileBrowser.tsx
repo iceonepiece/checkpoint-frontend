@@ -110,10 +110,12 @@ export default function FileBrowser() {
             name: item.name,
             type: type,
             sizeBytes: item.size,
-            modifiedAt: new Date().toISOString(), // Use real date if available in your API
+            modifiedAt: new Date().toISOString(), 
             isFolder: item.type === "dir",
             path: item.path,
-            thumb: item.download_url
+            thumb: item.download_url,
+            // --- FIX HERE: Pass the commentsCount from API to state ---
+            commentsCount: item.commentsCount || 0 
           };
         });
         setFiles(mappedFiles);
@@ -141,7 +143,29 @@ export default function FileBrowser() {
 
   // --- HANDLERS ---
 
-  // Download Handler using Proxy API
+  const handleUpload = async (file: File, message: string, description: string) => {
+    if (!currentRepo) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("message", message);
+    if (description) formData.append("description", description);
+
+    const uploadUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}/upload?path=${encodeURIComponent(currentPath)}`;
+
+    try {
+        const res = await fetch(uploadUrl, { method: "POST", body: formData });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Upload failed");
+        }
+        fetchFiles();
+    } catch (err) {
+        console.error("Upload error:", err);
+        alert("Failed to upload file");
+    }
+  };
+
   const handleDownload = async () => {
     if (!currentRepo) return;
 
@@ -150,7 +174,6 @@ export default function FileBrowser() {
     const selectedIds = Object.keys(selected).filter(k => selected[k]);
     const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
     
-    // Only download files, skip folders
     const validItems = itemsToDownload.filter(i => !i.isFolder);
 
     try {
@@ -161,7 +184,6 @@ export default function FileBrowser() {
                 const fileName = item.name;
                 const filePath = item.path || fileName;
                 
-                // Call our own API (Proxy) to avoid CORS/Auth issues
                 const downloadUrl = `/api/download?owner=${currentRepo.owner}&repo=${currentRepo.name}&path=${encodeURIComponent(filePath)}`;
 
                 const response = await fetch(downloadUrl);
@@ -182,7 +204,6 @@ export default function FileBrowser() {
                 
             } catch (err) {
                 console.error(`Failed to download ${item.name}`, err);
-                // Fallback: Try opening in new tab
                 if (item.thumb) window.open(item.thumb, '_blank');
             }
         }
@@ -205,13 +226,6 @@ export default function FileBrowser() {
   const handleLock = () => {
     alert("Locking logic here");
     clearSelection();
-  };
-  const handleUpload = async (file: File, message: string, description: string) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("message", message);
-    await fetch("/api/upload", { method: "POST", body: formData });
-    fetchFiles();
   };
 
   if (!currentRepo) {

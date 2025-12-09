@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
-import { Button } from "@/components/ui";
 import { FileItem } from "@/lib/mockFiles";
-import { CustomCheckbox, LockIcon, Kebab, mimeBadge, fmtBytes } from "./utils";
+import { CustomCheckbox, LockIcon, mimeBadge, fmtBytes } from "./utils";
 
 export function AssetRow({ file, selected, onToggle }: { file: FileItem, selected: boolean, onToggle: () => void }) {
   const badge = mimeBadge(file.type);
@@ -36,8 +35,7 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
           )}
         </div>
         
-        <div className="min-w-0">
-          {/* CHANGED: Use encodeURIComponent(file.path) */}
+        <div className="min-w-0 flex flex-col">
           <Link 
             href={file.isFolder ? `/?path=${file.path}` : `/asset/${encodeURIComponent(file.path || "")}`} 
             onClick={(e) => e.stopPropagation()}
@@ -45,7 +43,17 @@ export function AssetRow({ file, selected, onToggle }: { file: FileItem, selecte
           >
             {file.name}
           </Link>
+          
+          {/* NEW: Mobile Comment Count (visible on small screens only if you adjust classes, here sticking to basic layout) */}
         </div>
+
+        {/* NEW: Comment Indicator next to name */}
+        {file.commentsCount !== undefined && file.commentsCount > 0 && (
+            <div className="flex items-center gap-1 text-xs text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded border border-blue-400/20" title={`${file.commentsCount} comments`}>
+                <Icon className="size-3"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></Icon>
+                <span className="font-medium">{file.commentsCount}</span>
+            </div>
+        )}
       </div>
 
       <div className="text-sm text-gray-400 hidden sm:block">
