@@ -12,53 +12,83 @@ interface UploadModalProps {
     currentPath: string;
     existingFiles: FileItem[];
     onUpload: (files: File[], message: string, description: string) => Promise<void>;
+    fixedFileName?: string; // NEW: If set, enables "Update Mode"
 }
 
-export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpload }: UploadModalProps) {
+export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpload, fixedFileName }: UploadModalProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [message, setMessage] = useState("");
   const [description, setDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [error, setError] = useState("");
 
   // Handle Enter/Exit Animation & State Cleanup
   useEffect(() => {
     if (isOpen) {
         setIsVisible(true);
+        // Pre-fill message for update mode
+        if (fixedFileName) {
+            setMessage(`Update ${fixedFileName}`);
+        }
     } else {
-        // Wait for animation (300ms) then hide and clear state
         const timer = setTimeout(() => {
             setIsVisible(false);
-            setFiles([]);       // Clear files
-            setMessage("");     // Clear message
-            setDescription(""); // Clear description
+            setFiles([]);       
+            setMessage("");     
+            setDescription(""); 
+            setError("");
         }, 300); 
         return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, fixedFileName]);
 
   if (!isVisible) return null;
 
-  // Calculate duplicates
-  const duplicates = files.filter(f => existingFiles.some((ef: FileItem) => ef.name === f.name));
-  const isDuplicate = duplicates.length > 0;
+  // In Update Mode, we don't check duplicates because we INTEND to overwrite.
+  // In Upload Mode, we check duplicates.
+  const duplicates = !fixedFileName && files.filter(f => existingFiles.some((ef: FileItem) => ef.name === f.name));
+  const isDuplicate = duplicates && duplicates.length > 0;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setError("");
       if (e.target.files && e.target.files.length > 0) {
-          const newFiles = Array.from(e.target.files);
-          
-          // Append new files instead of replacing
-          const updatedFiles = [...files, ...newFiles];
+          const selectedFiles = Array.from(e.target.files);
+
+          // --- UPDATE MODE LOGIC ---
+          if (fixedFileName) {
+              if (selectedFiles.length > 1) {
+                  setError("Please select only one file for update.");
+                  return;
+              }
+              
+              const file = selectedFiles[0];
+              const targetExt = fixedFileName.split('.').pop()?.toLowerCase();
+              const fileExt = file.name.split('.').pop()?.toLowerCase();
+
+              if (targetExt && fileExt !== targetExt) {
+                  setError(`Extension mismatch. Please upload a .${targetExt} file to match the current asset.`);
+                  return;
+              }
+
+              // Replace list with single file
+              setFiles([file]);
+              if (!message || message.startsWith("Add ") || message.startsWith("Update ")) {
+                   setMessage(`Update ${fixedFileName}`);
+              }
+              return;
+          }
+
+          // --- NORMAL UPLOAD MODE LOGIC ---
+          const updatedFiles = [...files, ...selectedFiles];
           setFiles(updatedFiles);
 
-          // Auto-fill message if empty or if it looks like a default message
           if (!message || message.startsWith("Add ")) {
               setMessage(updatedFiles.length === 1 
                   ? `Add ${updatedFiles[0].name}` 
                   : `Add ${updatedFiles.length} files`);
           }
       }
-      // Reset input so the same file can be selected again if needed
       e.target.value = "";
   };
 
@@ -66,27 +96,40 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
       const newFiles = [...files];
       newFiles.splice(index, 1);
       setFiles(newFiles);
+      setError("");
       
-      // Update message if we removed the last file
-      if (newFiles.length === 0) {
+      if (newFiles.length === 0 && !fixedFileName) {
           setMessage("");
-      } else if (message.startsWith("Add ")) {
-          setMessage(newFiles.length === 1 
-            ? `Add ${newFiles[0].name}` 
-            : `Add ${newFiles.length} files`);
       }
   };
 
   const handleSubmit = async () => {
     if (files.length === 0 || !message) return;
     setIsUploading(true);
-    await onUpload(files, message, description);
-    setIsUploading(false);
     
-    // We don't need to manually clear state here anymore
-    // The useEffect will handle it when onClose triggers the exit animation
-    onClose();
+    try {
+        let finalFiles = files;
+
+        // RENAME LOGIC: If updating, rename the file to match the asset ID
+        if (fixedFileName && files.length === 1) {
+            const original = files[0];
+            // Create a new File object with the same content but the correct name
+            const renamed = new File([original], fixedFileName, { type: original.type });
+            finalFiles = [renamed];
+        }
+
+        await onUpload(finalFiles, message, description);
+        onClose();
+    } catch (err) {
+        console.error(err);
+        setError("Upload failed");
+    } finally {
+        setIsUploading(false);
+    }
   };
+
+  const title = fixedFileName ? "Update New Version" : "Upload Assets";
+  const dropText = fixedFileName ? "Click to select replacement file" : "Click to choose files";
 
   return (
     <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 ${isOpen ? "animate-fade-in" : "animate-fade-out"}`}>
@@ -95,10 +138,11 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0">
-          <h2 className="text-lg font-semibold text-white">Upload Assets</h2>
+          <h2 className="text-lg font-semibold text-white">{title}</h2>
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
              <span>Destination:</span>
              <span className="font-mono text-blue-400 bg-blue-400/10 px-1 rounded">/{currentPath || "root"}</span>
+             {fixedFileName && <span className="text-gray-500">(Target: {fixedFileName})</span>}
           </div>
         </div>
 
@@ -107,7 +151,7 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
           <div className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center transition-colors ${files.length > 0 ? 'border-green-500/50 bg-green-500/5' : 'border-default hover:border-gray-500'}`}>
             <input 
                 type="file" 
-                multiple 
+                multiple={!fixedFileName} 
                 className="hidden" 
                 id="file-upload" 
                 onChange={handleFileChange} 
@@ -118,19 +162,22 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
                     <div className="size-10 bg-card rounded-full flex items-center justify-center mx-auto mb-2 text-gray-400">
                         <Icon className="size-5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></Icon>
                     </div>
-                    <span className="text-sm text-blue-400 hover:underline">Click to choose files</span>
-                    <p className="text-xs text-gray-500 mt-1">or drag and drop them here</p>
+                    <span className="text-sm text-blue-400 hover:underline">{dropText}</span>
+                    {!fixedFileName && <p className="text-xs text-gray-500 mt-1">or drag and drop them here</p>}
                 </label>
             ) : (
                 <div className="flex flex-col items-center gap-2 w-full">
-                    <div className="text-sm text-green-400 font-medium">{files.length} files selected</div>
+                    <div className="text-sm text-green-400 font-medium">{files.length} file{files.length > 1 ? 's' : ''} selected</div>
                     <label htmlFor="file-upload" className="text-xs text-gray-500 hover:text-white cursor-pointer underline flex items-center gap-1">
                         <Icon className="size-3"><path d="M12 5v14M5 12h14"/></Icon>
-                        Click to add more files
+                        {fixedFileName ? "Change file" : "Click to add more files"}
                     </label>
                 </div>
             )}
           </div>
+          {error && (
+              <div className="text-xs text-red-400 mt-2">{error}</div>
+          )}
         </div>
 
         {/* File List (Scrollable) */}
@@ -143,7 +190,16 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
                                 {file.name.split('.').pop()?.slice(0,3)}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="truncate text-gray-200">{file.name}</div>
+                                <div className="truncate text-gray-200">
+                                    {/* Show rename intent in UI */}
+                                    {fixedFileName ? (
+                                        <span>
+                                            <span className="line-through text-gray-500">{file.name}</span>
+                                            <span className="mx-2 text-blue-400">→</span>
+                                            <span className="text-white">{fixedFileName}</span>
+                                        </span>
+                                    ) : file.name}
+                                </div>
                                 <div className="text-xs text-gray-500">{fmtBytes(file.size)}</div>
                             </div>
                             <button 
@@ -164,7 +220,7 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
                   <div>
                       <strong className="font-semibold">Overwrite Warning:</strong>
                       <p className="opacity-90 mt-0.5">
-                          {duplicates.length} file(s) will overwrite existing assets (e.g. &quot;{duplicates[0].name}&quot;).
+                          {duplicates ? duplicates.length : 0} file(s) will overwrite existing assets.
                       </p>
                   </div>
               </div>
@@ -173,7 +229,7 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
         <div className="space-y-3 shrink-0">
             <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-400 uppercase">Commit Summary <span className="text-red-400">*</span></label>
-                <input type="text" className="input-base" placeholder='e.g. "Add environment props"' value={message} onChange={(e) => setMessage(e.target.value)} />
+                <input type="text" className="input-base" placeholder={fixedFileName ? 'e.g. "Fix texture seam"' : 'e.g. "Add assets"'} value={message} onChange={(e) => setMessage(e.target.value)} />
             </div>
              <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-400 uppercase">Description (Optional)</label>
@@ -184,7 +240,7 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
         <div className="flex items-center justify-end gap-3 pt-2 border-t border-default shrink-0">
             <Button variant="ghost" onClick={onClose} disabled={isUploading}>Cancel</Button>
             <Button variant="primary" onClick={handleSubmit} disabled={files.length === 0 || !message || isUploading}>
-                {isUploading ? "Committing..." : (isDuplicate ? "Commit Changes" : "Commit Files")}
+                {isUploading ? "Committing..." : (fixedFileName || isDuplicate ? "Commit Changes" : "Commit Files")}
             </Button>
         </div>
       </div>

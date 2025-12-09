@@ -6,6 +6,8 @@ import { Asset, AssetVersion } from "@/lib/mockAssets";
 import AssetPreview from "@/components/AssetPreview";
 import DiffViewer from "@/components/DiffViewer";
 import ReviewPanel from "@/components/ReviewPanel";
+// Import UploadModal
+import { UploadModal } from "@/components/file-browser/modals/UploadModal";
 import { Card, KeyRow, SectionTitle, Button, LoadingSpinner } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import Link from "next/link";
@@ -88,6 +90,7 @@ export default function AssetPage(props: Params) {
   const { currentRepo, user } = useRepo();
 
   const filePath = resolvedParams ? decodeURIComponent(resolvedParams.id) : "";
+  const parentPath = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : "";
   
   const [asset, setAsset] = useState<Asset | null>(null);
   const [fileId, setFileId] = useState<number | null>(null); 
@@ -98,6 +101,7 @@ export default function AssetPage(props: Params) {
   const [isDownloading, setIsDownloading] = useState(false); 
   
   const [isLocking, setIsLocking] = useState(false);
+  const [isUpdateOpen, setUpdateOpen] = useState(false); // NEW STATE
   
   const [isExiting, setIsExiting] = useState(false);
 
@@ -105,6 +109,7 @@ export default function AssetPage(props: Params) {
   const [compareMode, setCompareMode] = useState(false);
   const [targetVersionId, setTargetVersionId] = useState<string>("");
 
+  // ... (keep useEffect for loadData) ...
   useEffect(() => {
     if (!resolvedParams) return;
     let isMounted = true;
@@ -126,9 +131,7 @@ export default function AssetPage(props: Params) {
         const baseUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}`;
 
         try {
-            // 1. Fetch Metadata
             const resMeta = await fetch(`${baseUrl}?path=${encodeURIComponent(filePath)}`);
-            
             if (resMeta.status === 404) {
                 if (isMounted) {
                     setError("File not found in this repository");
@@ -144,7 +147,6 @@ export default function AssetPage(props: Params) {
                 name: metaData.name,
                 type: getFileType(metaData.name),
                 sizeBytes: metaData.size,
-                // Placeholder date until versions load (metadata date isn't reliable for "last commit")
                 modifiedAt: new Date().toISOString(), 
                 thumb: metaData.download_url,
                 versions: [],
@@ -160,7 +162,6 @@ export default function AssetPage(props: Params) {
                 setVersionsLoading(true);
             }
 
-            // 2. Fetch Info (Status, Comments, Locks)
             fetch(`${baseUrl}/info?path=${encodeURIComponent(filePath)}`)
                 .then(async (res) => {
                     if (res.ok) {
@@ -174,7 +175,7 @@ export default function AssetPage(props: Params) {
 
                         const dbComments = data.comments?.map((c: ApiComment) => ({
                             id: c.comment_id,
-                            user: c.user?.username || "Unknown", // Handle null user
+                            user: c.user?.username || "Unknown", 
                             avatarUrl: c.user?.avatar_url,
                             text: c.message,
                             date: formatDate(c.created_at)
@@ -196,7 +197,6 @@ export default function AssetPage(props: Params) {
                 .catch((err) => console.warn("Info fetch failed", err))
                 .finally(() => isMounted && setInfoLoading(false));
 
-            // 3. Fetch Versions (Commits)
             fetch(`${baseUrl}/versions?path=${encodeURIComponent(filePath)}`)
                 .then(async (res) => {
                     if (res.ok) {
@@ -206,11 +206,8 @@ export default function AssetPage(props: Params) {
                         const mappedVersions: AssetVersion[] = Array.isArray(versionData) 
                           ? versionData.map((v: ApiVersion) => ({
                               id: v.sha,
-                              // Use commit message or fallback to SHA
                               label: v.commit?.message || `Commit ${v.sha.substring(0, 7)}`, 
-                              // Use Author Date from commit
                               date: v.commit?.author?.date || new Date().toISOString(),
-                              // Use Author Name from commit
                               author: v.commit?.author?.name || "Unknown",
                               thumb: v.download_url,
                               sizeBytes: v.size
@@ -222,7 +219,6 @@ export default function AssetPage(props: Params) {
                             return {
                                 ...prev,
                                 versions: mappedVersions,
-                                // Update main modified date to the LATEST version's date
                                 modifiedAt: mappedVersions[0]?.date || prev.modifiedAt, 
                             };
                         });
@@ -376,6 +372,32 @@ export default function AssetPage(props: Params) {
     }
   };
 
+  const handleUpdate = async (files: File[], message: string, description: string) => {
+    if (!currentRepo || !asset) return;
+
+    const formData = new FormData();
+    // The UploadModal already renamed the file to match asset.name, so we just append it
+    files.forEach(file => formData.append("files", file));
+    formData.append("message", message);
+    if (description) formData.append("description", description);
+
+    // Upload to the PARENT path (so file.name 'foo.png' goes into 'parent/foo.png')
+    const uploadUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}/upload?path=${encodeURIComponent(parentPath)}`;
+
+    try {
+        const res = await fetch(uploadUrl, { method: "POST", body: formData });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Update failed");
+        }
+        // Force a page refresh or re-fetch to see new version
+        window.location.reload(); 
+    } catch (err) {
+        console.error("Update error:", err);
+        alert("Failed to update asset");
+    }
+  };
+
   if (!currentRepo) return <div className="p-10 text-gray-500">Loading repository context...</div>;
   if (!resolvedParams || mainLoading) return (
       <div className="flex flex-col items-center justify-center h-full">
@@ -390,7 +412,7 @@ export default function AssetPage(props: Params) {
     </div>
   );
 
-  const targetVersionObj = asset.versions.find(v => v.id === targetVersionId);
+  const targetVersionObj: AssetVersion | undefined = asset.versions.find(v => v.id === targetVersionId);
   const oldThumb = targetVersionObj?.thumb || "";
   const animationClass = isExiting ? "animate-fade-out-left" : "animate-fade-in-right opacity-0";
   
@@ -415,7 +437,6 @@ export default function AssetPage(props: Params) {
                     <span className="mx-1 text-gray-600">/</span>
                     <span className="text-gray-300">{filePath}</span>
                     <span className="mx-1 text-gray-600">•</span>
-                    
                     {formatDate(asset.modifiedAt)}
                     
                     {asset.lockedBy && (
@@ -431,6 +452,16 @@ export default function AssetPage(props: Params) {
                 </div>
             </div>
             <div className="flex items-center gap-2">
+                {/* NEW: Update Button */}
+                <Button 
+                    size="sm" 
+                    variant="primary"
+                    onClick={() => setUpdateOpen(true)}
+                    disabled={!canModify || isDownloading || isLocking}
+                >
+                    Update New Version
+                </Button>
+
                 <Button size="sm" onClick={handleDownload} loading={isDownloading}>
                     {isDownloading ? "Downloading..." : "Download"}
                 </Button>
@@ -473,19 +504,30 @@ export default function AssetPage(props: Params) {
             )}
         </Card>
 
+        {/* ... (Keep existing Content Grid & Review Panel) ... */}
         {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 pb-10">
             <div className="flex flex-col gap-4">
-                <Card className={`p-3 bg-background flex flex-col justify-center ${animationClass}`} style={{ animationDelay: isExiting ? "0s" : "0.1s" }}>
+                <Card 
+                    className={`p-3 bg-background flex flex-col justify-center ${animationClass}`}
+                    style={{ animationDelay: isExiting ? "0s" : "0.1s" }}
+                >
                     {compareMode ? (
-                        <DiffViewer before={oldThumb} after={asset.thumb!} type={asset.type} />
+                        <DiffViewer 
+                            before={oldThumb} 
+                            after={asset.thumb!} 
+                            type={asset.type} 
+                        />
                     ) : (
                         <AssetPreview src={asset.thumb} type={asset.type} alt={asset.name} />
                     )}
                 </Card>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className={`p-3 ${animationClass}`} style={{ animationDelay: isExiting ? "0s" : "0.2s" }}>
+                    <Card 
+                        className={`p-3 ${animationClass}`}
+                        style={{ animationDelay: isExiting ? "0s" : "0.2s" }}
+                    >
                         <SectionTitle>Metadata</SectionTitle>
                         <div className="mt-2 divide-y divide-default">
                             <KeyRow k="Type" v={asset.type} />
@@ -495,7 +537,10 @@ export default function AssetPage(props: Params) {
                         </div>
                     </Card>
 
-                    <Card className={`p-3 ${animationClass}`} style={{ animationDelay: isExiting ? "0s" : "0.3s" }}>
+                    <Card 
+                        className={`p-3 ${animationClass}`}
+                        style={{ animationDelay: isExiting ? "0s" : "0.3s" }}
+                    >
                         <SectionTitle>Versions</SectionTitle>
                         <ul className="mt-2 space-y-2 max-h-60 overflow-y-auto">
                             {versionsLoading ? (
@@ -532,7 +577,10 @@ export default function AssetPage(props: Params) {
                 </div>
             </div>
 
-            <div className={animationClass} style={{ animationDelay: isExiting ? "0s" : "0.4s" }}>
+            <div 
+                className={animationClass}
+                style={{ animationDelay: isExiting ? "0s" : "0.4s" }}
+            >
                 <div className={!canModify ? "opacity-70 pointer-events-none grayscale-[0.5]" : ""}>
                     <ReviewPanel 
                         isLoading={infoLoading}
@@ -550,6 +598,17 @@ export default function AssetPage(props: Params) {
                 )}
             </div>
         </div>
+        
+        {/* NEW: Upload Modal for Updates */}
+        <UploadModal 
+            isOpen={isUpdateOpen} 
+            onClose={() => setUpdateOpen(false)} 
+            currentPath={parentPath} 
+            existingFiles={[]} // Not needed for update
+            onUpload={handleUpdate}
+            fixedFileName={asset.name} // This enables "Update Mode"
+        />
+
       </div>
     </section>
   );
