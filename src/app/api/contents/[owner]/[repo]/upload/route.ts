@@ -75,14 +75,6 @@ export async function POST(
             files: filesToCommit
         });
 
-        // Do track uploaded files
-        // Find repo_id
-        const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
-
-        const repoId = repoData.id;
-        const cookieStore = await cookies();
-        const supabase = createClient(cookieStore);
-
         await Promise.all(
             files.map(async (file) => {
                 const filePath = currentPath ? `${currentPath}/${file.name}` : file.name;
@@ -101,8 +93,8 @@ export async function POST(
             commit: result.commitSha
         });
 
-    } catch (err: any) {
+    } catch (err) {
         console.error("Upload Error:", err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json({ error: err }, { status: 500 });
     }
 }

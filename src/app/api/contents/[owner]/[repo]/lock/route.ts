@@ -91,10 +91,10 @@ export async function POST(
         isLocked: isLockedTarget 
     });
 
-  } catch (err: any) {
+  } catch (err) {
     console.error("API Error:", err);
     return NextResponse.json(
-      { error: err.message ?? "Internal Server Error" },
+      { error: err ?? "Internal Server Error" },
       { status: 500 }
     );
   }

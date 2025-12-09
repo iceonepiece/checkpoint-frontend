@@ -37,7 +37,7 @@ export async function getLockStatus(
     }
 
     const latest = data.lock_events[0];
-    // @ts-ignore
+    // @ts-expect-error username may not appear
     const username = latest.user?.username || "Unknown";
 
     return { 
