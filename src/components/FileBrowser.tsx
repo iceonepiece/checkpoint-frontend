@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation"; 
 import Breadcrumbs from "@/components/Breadcrumbs";
-import { Button, Card, LoadingSpinner } from "@/components/ui"; // Import LoadingSpinner
+import { Button, Card, LoadingSpinner } from "@/components/ui"; 
 import { Icon } from "@/components/Icon"; 
 import { type FileItem } from "@/lib/mockFiles"; 
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
@@ -65,9 +65,13 @@ export default function FileBrowser() {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   
+  // Modal States
   const [isUploadOpen, setUploadOpen] = useState(false);
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [isMoveOpen, setMoveOpen] = useState(false);
+  
+  // Download Loading State
+  const [isDownloading, setIsDownloading] = useState(false);
   
   const searchParams = useSearchParams();
   const currentPath = searchParams.get("path") || "";
@@ -106,7 +110,7 @@ export default function FileBrowser() {
             name: item.name,
             type: type,
             sizeBytes: item.size,
-            modifiedAt: new Date().toISOString(), 
+            modifiedAt: new Date().toISOString(), // Use real date if available in your API
             isFolder: item.type === "dir",
             path: item.path,
             thumb: item.download_url
@@ -137,33 +141,55 @@ export default function FileBrowser() {
 
   // --- HANDLERS ---
 
+  // Download Handler using Proxy API
   const handleDownload = async () => {
+    if (!currentRepo) return;
+
+    setIsDownloading(true);
+
     const selectedIds = Object.keys(selected).filter(k => selected[k]);
     const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
     
-    const validItems = itemsToDownload.filter(i => !i.isFolder && i.thumb);
+    // Only download files, skip folders
+    const validItems = itemsToDownload.filter(i => !i.isFolder);
 
-    if (validItems.length === 0) return;
+    try {
+        if (validItems.length === 0) return;
 
-    for (const item of validItems) {
-        try {
-            const response = await fetch(item.thumb!);
-            if (!response.ok) throw new Error("Network response was not ok");
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = item.name;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (err) {
-            console.error(`Failed to download ${item.name}`, err);
-            if (item.thumb) window.open(item.thumb, '_blank');
+        for (const item of validItems) {
+            try {
+                const fileName = item.name;
+                const filePath = item.path || fileName;
+                
+                // Call our own API (Proxy) to avoid CORS/Auth issues
+                const downloadUrl = `/api/download?owner=${currentRepo.owner}&repo=${currentRepo.name}&path=${encodeURIComponent(filePath)}`;
+
+                const response = await fetch(downloadUrl);
+                
+                if (!response.ok) throw new Error("Download failed via proxy");
+                
+                const blob = await response.blob();
+                
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                window.URL.revokeObjectURL(url);
+                
+            } catch (err) {
+                console.error(`Failed to download ${item.name}`, err);
+                // Fallback: Try opening in new tab
+                if (item.thumb) window.open(item.thumb, '_blank');
+            }
         }
+        clearSelection();
+    } finally {
+        setIsDownloading(false);
     }
-    clearSelection();
   };
 
   const handleDelete = async (message: string) => {
@@ -198,7 +224,6 @@ export default function FileBrowser() {
       );
   }
 
-  // --- Animation Helper ---
   const getDelayStyle = (index: number) => ({
     animationDelay: `${index * 0.05}s`
   });
@@ -231,12 +256,12 @@ export default function FileBrowser() {
         onDelete={() => setDeleteOpen(true)}
         onMove={() => setMoveOpen(true)}
         onDownload={handleDownload}
+        isDownloading={isDownloading} 
         clear={clearSelection} 
       />
 
-      {/* Grid / List with STAGGERED Animation */}
+      {/* Grid / List */}
       {loading ? (
-         // CHANGED: Use LoadingSpinner here
          <div className="flex-1 flex items-center justify-center min-h-[300px]">
             <LoadingSpinner text="Loading contents..." />
          </div>
@@ -252,7 +277,6 @@ export default function FileBrowser() {
             key={currentPath}
             className="space-y-6 pb-20"
         >
-          {/* SECTION: FOLDERS */}
           {subFolders.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Folders</h3>
@@ -266,7 +290,6 @@ export default function FileBrowser() {
             </div>
           )}
 
-          {/* SECTION: FILES */}
           {currentFiles.length > 0 && (
             <div>
               {subFolders.length > 0 && <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Files</h3>}
@@ -302,7 +325,6 @@ export default function FileBrowser() {
         </Card>
       )}
       
-      {/* MODALS */}
       <UploadModal isOpen={isUploadOpen} onClose={() => setUploadOpen(false)} currentPath={currentPath} existingFiles={files} onUpload={handleUpload} />
       <DeleteModal isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} selectedCount={Object.values(selected).filter(Boolean).length} onConfirm={handleDelete} />
       <MoveModal isOpen={isMoveOpen} onClose={() => setMoveOpen(false)} selectedCount={Object.values(selected).filter(Boolean).length} onConfirm={handleMove} />
