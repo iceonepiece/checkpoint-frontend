@@ -23,9 +23,9 @@ export function AssetCard({ file, selected, onToggle, size }: { file: FileItem, 
       </div>
       
       {isLocked && (
-        <div className="absolute left-2 top-8 z-30" title={lockTooltip}>
+        <div className="absolute left-2 top-10 z-30" title={lockTooltip}>
           <div className="bg-red-500/90 text-white p-1 rounded-md shadow-sm">
-            <LockIcon className="size-3" />
+            <LockIcon className="size-4" />
           </div>
         </div>
       )}

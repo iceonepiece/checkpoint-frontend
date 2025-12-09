@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-// 1. AssetVersion is imported and will be used below
 import { Asset, AssetVersion } from "@/lib/mockAssets"; 
 import AssetPreview from "@/components/AssetPreview";
 import DiffViewer from "@/components/DiffViewer";
@@ -38,7 +37,14 @@ interface ApiVersion {
   size: number;
 }
 
-// Map DB Integers to UI Strings
+interface ApiLockEvent {
+    is_locked: boolean;
+    created_at: string;
+    user: {
+        username: string;
+    } | null;
+}
+
 const STATUS_MAP: Record<number, "Pending" | "Approved" | "Needs changes"> = {
   0: "Pending",
   1: "Approved",
@@ -57,7 +63,6 @@ function getFileType(fileName: string) {
 export default function AssetPage(props: Params) {
   const router = useRouter();
   
-  // Unwrap params
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
@@ -75,6 +80,9 @@ export default function AssetPage(props: Params) {
   const [infoLoading, setInfoLoading] = useState(true); 
   const [versionsLoading, setVersionsLoading] = useState(true); 
   const [isDownloading, setIsDownloading] = useState(false); 
+  
+  // NEW: Lock Loading State
+  const [isLocking, setIsLocking] = useState(false);
   
   const [isExiting, setIsExiting] = useState(false);
 
@@ -154,7 +162,18 @@ export default function AssetPage(props: Params) {
                             date: new Date(c.created_at).toLocaleDateString()
                         })) || [];
 
-                        setAsset(prev => prev ? { ...prev, status: statusStr, comments: dbComments } : null);
+                        // UPDATED: Parse lock info
+                        const locks = data.lock_events as ApiLockEvent[] | undefined;
+                        const latestLock = locks?.[0];
+                        const isLocked = latestLock?.is_locked ?? false;
+                        const lockedBy = isLocked ? (latestLock?.user?.username ?? "Unknown") : undefined;
+
+                        setAsset(prev => prev ? { 
+                            ...prev, 
+                            status: statusStr, 
+                            comments: dbComments,
+                            lockedBy: lockedBy // Set lock state
+                        } : null);
                     }
                 })
                 .catch((err) => console.warn("Info fetch failed", err))
@@ -271,8 +290,36 @@ export default function AssetPage(props: Params) {
       }
   };
 
-  const handleLock = () => {
-    if(asset) setAsset({ ...asset, lockedBy: asset.lockedBy ? undefined : "Me" });
+  // UPDATED: Handle Lock Logic
+  const handleLock = async () => {
+    if(!asset || !currentRepo) return;
+    setIsLocking(true);
+
+    try {
+        const shouldLock = !asset.lockedBy;
+        const url = `/api/contents/${currentRepo.owner}/${currentRepo.name}/lock?path=${encodeURIComponent(filePath)}&is_locked=${shouldLock}`;
+
+        const res = await fetch(url, { method: "POST" });
+        if (!res.ok) throw new Error("Failed to toggle lock");
+
+        // Re-fetch info to update lock state accurately
+        const resInfo = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info?path=${encodeURIComponent(filePath)}`);
+        if (resInfo.ok) {
+             const data = await resInfo.json();
+             
+             // Extract latest lock state
+             const locks = data.lock_events as ApiLockEvent[] | undefined;
+             const latestLock = locks?.[0];
+             const isLocked = latestLock?.is_locked ?? false;
+             const lockedBy = isLocked ? (latestLock?.user?.username ?? "Unknown") : undefined;
+
+             setAsset(prev => prev ? { ...prev, lockedBy } : null);
+        }
+    } catch (err) {
+        console.error("Lock error", err);
+    } finally {
+        setIsLocking(false);
+    }
   };
 
   const handleDownload = async () => {
@@ -314,12 +361,10 @@ export default function AssetPage(props: Params) {
     </div>
   );
 
-  // 2. Use AssetVersion to explicitly type the found object
   const targetVersionObj: AssetVersion | undefined = asset.versions.find(v => v.id === targetVersionId);
-  // 3. Removed 'as any' cast, accessing thumb safely via optional chaining
   const oldThumb = targetVersionObj?.thumb || "";
-  
   const animationClass = isExiting ? "animate-fade-out-left" : "animate-fade-in-right opacity-0";
+  const isBusy = isDownloading || isLocking;
 
   return (
     <section className="h-full w-full overflow-y-auto">
@@ -353,17 +398,20 @@ export default function AssetPage(props: Params) {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button size="sm" onClick={handleDownload} loading={isDownloading}>
+                <Button size="sm" onClick={handleDownload} loading={isDownloading} disabled={isBusy}>
                     {isDownloading ? "Downloading..." : "Download"}
                 </Button>
-                <Button size="sm" onClick={handleLock} disabled={isDownloading}>
-                    {asset.lockedBy ? "Unlock" : "Lock"}
+                
+                {/* UPDATED: Lock Button with Loading State */}
+                <Button size="sm" onClick={handleLock} loading={isLocking} disabled={isBusy}>
+                    {isLocking ? "Updating..." : (asset.lockedBy ? "Unlock" : "Lock")}
                 </Button>
+                
                 <Button 
                     size="sm" 
                     variant={compareMode ? "primary" : "default"}
                     onClick={() => setCompareMode(!compareMode)}
-                    disabled={versionsLoading || asset.versions.length < 2 || isDownloading}
+                    disabled={versionsLoading || asset.versions.length < 2 || isBusy}
                 >
                 {compareMode ? "Exit Compare" : "Compare"}
                 </Button>

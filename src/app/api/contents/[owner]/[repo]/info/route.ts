@@ -30,6 +30,7 @@ export async function GET(
         const cookieStore = await cookies();
         const supabase = createClient(cookieStore);
 
+        // UPDATED: Added lock_events to the selection
         const { data: fileData, error: fileError } = await supabase
             .from("files")
             .select(`
@@ -44,10 +45,16 @@ export async function GET(
                         username,
                         avatar_url
                     )
+                ),
+                lock_events (
+                    is_locked,
+                    created_at,
+                    user:users (username)
                 )
             `)
             .eq("repo_id", repoData.id)
             .eq("path", path)
+            .order("created_at", { foreignTable: "lock_events", ascending: false }) // Get latest lock
             .maybeSingle();
 
         if (fileError) {
@@ -55,7 +62,7 @@ export async function GET(
         }
 
         if (!fileData) {
-            return NextResponse.json({ asset_status: 0, comments: [] });
+            return NextResponse.json({ asset_status: 0, comments: [], lock_events: [] });
         }
 
         return NextResponse.json(fileData);

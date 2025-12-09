@@ -10,15 +10,14 @@ interface SelectionBarProps {
   onDownload: () => void;
   clear: () => void;
   isDownloading?: boolean;
+  isLocking?: boolean; // NEW PROP
 }
 
-// Removed unused 'onMove' from props destructuring if it was unused, 
-// but it seems to be passed down. I'll keep it but maybe suppress logic if needed.
-// Actually the warning said 'onMove' is defined but never used. 
-// If it's passed in but not used in JSX, we should use it or remove it.
-// Looking at previous code, it WAS used in a commented out button. I'll uncomment or remove.
-export function SelectionBar({ count, onLock, onDelete, onDownload, clear, isDownloading = false }: SelectionBarProps) {
+export function SelectionBar({ count, onLock, onDelete, onDownload, clear, isDownloading = false, isLocking = false }: SelectionBarProps) {
   const show = count > 0;
+  
+  // Disable all actions if any async operation is in progress
+  const isBusy = isDownloading || isLocking;
 
   return (
     <div 
@@ -40,20 +39,21 @@ export function SelectionBar({ count, onLock, onDelete, onDownload, clear, isDow
       </div>
       
       <div className="flex items-center gap-2">
-        <Button size="sm" onClick={onDownload} loading={isDownloading}>
+        <Button size="sm" onClick={onDownload} loading={isDownloading} disabled={isBusy}>
           {isDownloading ? "Downloading..." : "Download"}
         </Button>
-        {/* Re-enabled move button to use the prop, or remove prop if feature not ready */}
-        {/* <Button size="sm" onClick={onMove}>Move</Button> */}
-        <Button size="sm" onClick={onLock} disabled={isDownloading}>Lock</Button>
-        <Button variant="danger" size="sm" onClick={onDelete} disabled={isDownloading}>Delete</Button>
+        {/* <Button size="sm" onClick={onMove} disabled={isBusy}>Move</Button> */}
+        <Button size="sm" onClick={onLock} loading={isLocking} disabled={isBusy}>
+            {isLocking ? "Updating..." : "Lock"}
+        </Button>
+        <Button variant="danger" size="sm" onClick={onDelete} disabled={isBusy}>Delete</Button>
         
         <div className="w-px h-4 bg-gray-700 mx-1" />
         
         <button 
           onClick={clear} 
           className="text-gray-400 hover:text-white text-xs font-medium px-2 transition-colors uppercase tracking-wider"
-          disabled={isDownloading}
+          disabled={isBusy}
         >
           Clear
         </button>

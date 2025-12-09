@@ -69,7 +69,9 @@ export default function FileBrowser() {
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [isMoveOpen, setMoveOpen] = useState(false);
   
+  // Loading States
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isLocking, setIsLocking] = useState(false); // NEW STATE
   
   const searchParams = useSearchParams();
   const currentPath = searchParams.get("path") || "";
@@ -100,11 +102,10 @@ export default function FileBrowser() {
       const data = await res.json();
       
       if (Array.isArray(data)) {
-        // Define a type for the raw API response items
         const mappedFiles: FileItem[] = data.map((item: any) => {
           const type = getFileType(item.name, item.type);
           return {
-            id: item.sha,
+            id: item.path, 
             name: item.name,
             type: type,
             sizeBytes: item.size,
@@ -144,27 +145,35 @@ export default function FileBrowser() {
 
   const handleLock = async () => {
     if (!currentRepo) return;
+    
+    // 1. Start Loading
+    setIsLocking(true);
 
     const selectedIds = Object.keys(selected).filter(k => selected[k]);
     const itemsToLock = files.filter(item => selectedIds.includes(item.id));
     const validItems = itemsToLock.filter(i => !i.isFolder);
 
-    if (validItems.length === 0) return;
+    try {
+        if (validItems.length === 0) return;
 
-    for (const item of validItems) {
-        try {
-            const shouldLock = !item.lockedBy;
-            const filePath = item.path || item.name;
-            const url = `/api/contents/${currentRepo.owner}/${currentRepo.name}/lock?path=${encodeURIComponent(filePath)}&is_locked=${shouldLock}`;
+        for (const item of validItems) {
+            try {
+                const shouldLock = !item.lockedBy;
+                const filePath = item.path || item.name;
+                const url = `/api/contents/${currentRepo.owner}/${currentRepo.name}/lock?path=${encodeURIComponent(filePath)}&is_locked=${shouldLock}`;
 
-            await fetch(url, { method: "POST" });
-        } catch (err) {
-            console.error(`Failed to toggle lock for ${item.name}`, err);
+                await fetch(url, { method: "POST" });
+            } catch (err) {
+                console.error(`Failed to toggle lock for ${item.name}`, err);
+            }
         }
+        
+        await fetchFiles(); // Wait for refresh
+        clearSelection();
+    } finally {
+        // 2. Stop Loading
+        setIsLocking(false);
     }
-    
-    fetchFiles();
-    clearSelection();
   };
 
   const handleUpload = async (file: File, message: string, description: string) => {
@@ -235,14 +244,12 @@ export default function FileBrowser() {
   };
 
   const handleDelete = async (message: string) => {
-    // Implement delete logic with API call
     console.log(`Deleting with message: ${message}`);
     setDeleteOpen(false);
     clearSelection();
   };
   
   const handleMove = async (targetId: string, message: string) => {
-    // Implement move logic
     console.log(`Moving to ${targetId} with message: ${message}`);
     setMoveOpen(false);
     clearSelection();
@@ -291,6 +298,7 @@ export default function FileBrowser() {
         onMove={() => setMoveOpen(true)}
         onDownload={handleDownload}
         isDownloading={isDownloading} 
+        isLocking={isLocking} // PASS PROP
         clear={clearSelection} 
       />
 
