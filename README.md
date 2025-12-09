@@ -76,7 +76,22 @@ CREATE TABLE public.users (
 ```
 
 
-## Description of features
+## Core Features
 
+### 🔼 Upload New Assets
+Easily upload new assets through a simple UI.
+Each upload automatically creates a Git commit, making version tracking effortless.
+
+### 🔒 File Locking System
+Artists can lock and unlock files to prevent conflicting edits.
+Reviewers have permission to override locks when necessary.
+
+### 👀 Asset Review & Status Management
+Reviewers can review submitted assets, leave comments, and update asset status
+(e.g. Needs Changes, Pending, or Approved).
+
+### 🖼️ Asset Preview & Diff Comparison
+View asset previews directly in the browser and compare versions side-by-side.
+Perfect for checking visual changes, file updates, and improvements across commits.
 
 ## Screenshots 
