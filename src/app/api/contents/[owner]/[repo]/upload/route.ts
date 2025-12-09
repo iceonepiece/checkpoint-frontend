@@ -1,58 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth";
+import { uploadMultipleFiles } from "@/lib/github/uploadMultipleFiles";
 
 export async function POST(
-    req: NextRequest,
-    context: { params: Promise<{ owner: string; repo: string }> } // 1. Update Type
+  req: NextRequest,
+  context: { params: Promise<{ owner: string; repo: string }> }
 ) {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const message = formData.get("message") as string | null;
+  const formData = await req.formData();
 
-    if (!file) {
-        return NextResponse.json({ message: "No file received" }, { status: 400 });
-    }
-    if (!message) {
-        return NextResponse.json({ message: "No commit message" }, { status: 400 });
-    }
+  const files = formData.getAll("files") as File[];
+  const message = formData.get("message") as string | null;
 
-    // Read file buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+  if (!files || files.length === 0) {
+    return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
+  }
+  if (!message) {
+    return NextResponse.json({ error: "No commit message" }, { status: 400 });
+  }
 
-    console.log("Uploaded file:", file.name);
-    console.log("Size:", file.size);
-    console.log("Type:", file.type);
-    console.log("Commit message:", message);
+  const { owner, repo } = await context.params;
+  const search = req.nextUrl.searchParams;
+  const directory = search.get("path") ?? "";
+  const branch = search.get("branch") ?? "main";
 
-    const auth = await authenticate();
+  const auth = await authenticate();
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
 
-    if (!auth.ok) {
-        return NextResponse.json({ error: auth.error }, { status: auth.status });
-    }
+  const { octokit } = auth;
 
-    const { octokit } = auth;
+  try {
+    // Convert each uploaded File → Buffer + repo path
+    const filesToCommit = await Promise.all(
+      files.map(async (file) => {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const fullPath = directory ? `${directory}/${file.name}` : file.name;
+        return {
+          path: fullPath,
+          buffer,
+        };
+      })
+    );
 
-    const { owner, repo } = await context.params;
-    const search = req.nextUrl.searchParams;
-    const path = search.get("path") ?? "";
-    const branch = search.get("branch") ?? "main";
+    const result = await uploadMultipleFiles({
+      octokit,
+      owner,
+      repo,
+      files: filesToCommit,
+      message,
+      branch,
+    });
 
-    try
-    {
-        await octokit.rest.repos.createOrUpdateFileContents({
-            owner,
-            repo,
-            path: file.name,
-            message,
-            content: buffer.toString("base64"),
-        });
-
-        return NextResponse.json({
-            message: `File ${file.name} uploaded successfully`,
-        });
-
-    } catch (err) {
-        return NextResponse.json({ error: err }, { status: 500 });
-    }
+    return NextResponse.json({
+      message: `Committed ${files.length} file(s)`,
+      commit: result.commitSha,
+      files: result.files,
+    });
+  } catch (err: any) {
+    console.error("Upload error:", err);
+    return NextResponse.json(
+      { error: err.message ?? String(err) },
+      { status: 500 }
+    );
+  }
 }
