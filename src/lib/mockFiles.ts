@@ -10,6 +10,7 @@ export type FileItem = {
   lockedAt?: string;
   folderId?: string;
   path?: string;
+  commentsCount?: number; // NEW FIELD
 };
 
 export const MOCK_FILES: FileItem[] = [
