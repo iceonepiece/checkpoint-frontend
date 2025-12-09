@@ -321,7 +321,7 @@ export default function AssetPage(props: Params) {
         <Card className={`p-4 shrink-0 ${animationClass}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} title="Go Back">
+                <Button variant="ghost" className="size-15" onClick={() => router.back()} title="Go Back">
                 <Icon className="size-5"><path d="M19 12H5m7 7l-7-7 7-7" /></Icon>
                 </Button>
 

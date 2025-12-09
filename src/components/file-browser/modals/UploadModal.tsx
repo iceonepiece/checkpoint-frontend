@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { fmtBytes } from "../utils";
@@ -11,8 +11,20 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
   const [message, setMessage] = useState("");
   const [description, setDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
-  if (!isOpen) return null;
+  // Handle Enter/Exit Animation
+  useEffect(() => {
+    if (isOpen) {
+        setIsVisible(true);
+    } else {
+        const timer = setTimeout(() => setIsVisible(false), 300); // 300ms matches CSS animation
+        return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  if (!isVisible) return null;
+
   const isDuplicate = file && existingFiles.some((f: FileItem) => f.name === file.name);
 
   const handleSubmit = async () => {
@@ -27,8 +39,11 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-lg rounded-xl surface-card p-6 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 ${isOpen ? "animate-fade-in" : "animate-fade-out"}`}>
+      <div 
+        className={`w-full max-w-lg rounded-xl surface-card p-6 shadow-2xl space-y-5 ${isOpen ? "animate-zoom-in" : "animate-zoom-out"}`} 
+        onClick={(e) => e.stopPropagation()}
+      >
         <div>
           <h2 className="text-lg font-semibold text-white">Upload Asset</h2>
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">

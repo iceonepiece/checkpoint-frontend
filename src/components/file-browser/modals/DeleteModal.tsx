@@ -1,18 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 
 export function DeleteModal({ isOpen, onClose, selectedCount, onConfirm }: any) {
   const [message, setMessage] = useState("");
   const [description, setDescription] = useState("");
+  const [isVisible, setIsVisible] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+        setIsVisible(true);
+    } else {
+        const timer = setTimeout(() => setIsVisible(false), 300);
+        return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-xl surface-card p-6 shadow-2xl space-y-4">
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 ${isOpen ? "animate-fade-in" : "animate-fade-out"}`}>
+      <div className={`w-full max-w-md rounded-xl surface-card p-6 shadow-2xl space-y-4 ${isOpen ? "animate-zoom-in" : "animate-zoom-out"}`}>
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <Icon className="size-5 text-red-400"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></Icon>
             Delete {selectedCount} items?
