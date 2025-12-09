@@ -31,6 +31,10 @@ interface ApiVersion {
     author: {
       date: string;
       name: string;
+      email: string;
+    };
+    committer: {
+        date: string;
     };
   };
   download_url: string;
@@ -60,6 +64,18 @@ function getFileType(fileName: string) {
   return "file";
 }
 
+// Helper for consistent date formatting
+function formatDate(dateStr: string) {
+  if (!dateStr) return "Unknown date";
+  return new Date(dateStr).toLocaleString(undefined, { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+}
+
 export default function AssetPage(props: Params) {
   const router = useRouter();
   
@@ -69,7 +85,6 @@ export default function AssetPage(props: Params) {
     props.params.then(setResolvedParams);
   }, [props.params]);
 
-  // NEW: Get user
   const { currentRepo, user } = useRepo();
 
   const filePath = resolvedParams ? decodeURIComponent(resolvedParams.id) : "";
@@ -111,6 +126,7 @@ export default function AssetPage(props: Params) {
         const baseUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}`;
 
         try {
+            // 1. Fetch Metadata
             const resMeta = await fetch(`${baseUrl}?path=${encodeURIComponent(filePath)}`);
             
             if (resMeta.status === 404) {
@@ -128,6 +144,7 @@ export default function AssetPage(props: Params) {
                 name: metaData.name,
                 type: getFileType(metaData.name),
                 sizeBytes: metaData.size,
+                // Placeholder date until versions load (metadata date isn't reliable for "last commit")
                 modifiedAt: new Date().toISOString(), 
                 thumb: metaData.download_url,
                 versions: [],
@@ -143,6 +160,7 @@ export default function AssetPage(props: Params) {
                 setVersionsLoading(true);
             }
 
+            // 2. Fetch Info (Status, Comments, Locks)
             fetch(`${baseUrl}/info?path=${encodeURIComponent(filePath)}`)
                 .then(async (res) => {
                     if (res.ok) {
@@ -159,7 +177,7 @@ export default function AssetPage(props: Params) {
                             user: c.user?.username || "User", 
                             avatarUrl: c.user?.avatar_url,
                             text: c.message,
-                            date: new Date(c.created_at).toLocaleDateString()
+                            date: formatDate(c.created_at)
                         })) || [];
 
                         const locks = data.lock_events as ApiLockEvent[] | undefined;
@@ -178,26 +196,33 @@ export default function AssetPage(props: Params) {
                 .catch((err) => console.warn("Info fetch failed", err))
                 .finally(() => isMounted && setInfoLoading(false));
 
+            // 3. Fetch Versions (Commits)
             fetch(`${baseUrl}/versions?path=${encodeURIComponent(filePath)}`)
                 .then(async (res) => {
                     if (res.ok) {
                         const versionData = await res.json();
                         if (!isMounted) return;
 
-                        const mappedVersions = Array.isArray(versionData) ? versionData.map((v: ApiVersion) => ({
-                            id: v.sha,
-                            label: v.commit?.message || `Commit ${v.sha.substring(0, 7)}`, 
-                            date: v.commit?.author?.date || new Date().toISOString(),
-                            author: v.commit?.author?.name || "Unknown",
-                            thumb: v.download_url,
-                            sizeBytes: v.size
-                        })) : [];
+                        const mappedVersions: AssetVersion[] = Array.isArray(versionData) 
+                          ? versionData.map((v: ApiVersion) => ({
+                              id: v.sha,
+                              // Use commit message or fallback to SHA
+                              label: v.commit?.message || `Commit ${v.sha.substring(0, 7)}`, 
+                              // Use Author Date from commit
+                              date: v.commit?.author?.date || new Date().toISOString(),
+                              // Use Author Name from commit
+                              author: v.commit?.author?.name || "Unknown",
+                              thumb: v.download_url,
+                              sizeBytes: v.size
+                          })) 
+                          : [];
 
                         setAsset(prev => {
                             if (!prev) return null;
                             return {
                                 ...prev,
                                 versions: mappedVersions,
+                                // Update main modified date to the LATEST version's date
                                 modifiedAt: mappedVersions[0]?.date || prev.modifiedAt, 
                             };
                         });
@@ -226,15 +251,12 @@ export default function AssetPage(props: Params) {
   // --- PERMISSION CHECKS ---
   const isRepoOwner = currentRepo?.owner === user?.username;
   const isLockedByMe = asset?.lockedBy === user?.username;
-  const isLockedByOther = !!asset?.lockedBy && !isLockedByMe;
-
-  const canModify = !asset?.lockedBy || isLockedByMe; // Edit status, upload new
-  const canUnlock = isLockedByMe || isRepoOwner || !asset?.lockedBy; // Unlock
+  const canModify = !asset?.lockedBy || isLockedByMe; 
+  const canUnlock = isLockedByMe || isRepoOwner || !asset?.lockedBy; 
 
   const handleStatusChange = async (newStatus: "Needs changes" | "Pending" | "Approved") => {
       if(!asset || !currentRepo) return;
       
-      // PERMISSION CHECK
       if (!canModify) {
           alert(`Cannot change status: File is locked by ${asset.lockedBy}`);
           return;
@@ -262,10 +284,6 @@ export default function AssetPage(props: Params) {
 
   const handleAddComment = async (text: string) => {
       if(!asset || !currentRepo) return;
-
-      // Note: Comments are generally allowed even on locked files in many systems
-      // unless specified otherwise. Assuming allowed.
-
       let currentFileId = fileId;
       if (!currentFileId) {
           try {
@@ -279,9 +297,7 @@ export default function AssetPage(props: Params) {
                   currentFileId = data.file_id;
                   setFileId(currentFileId);
               }
-          } catch { 
-             return; 
-          }
+          } catch { return; }
       }
 
       if (!currentFileId) return;
@@ -297,7 +313,7 @@ export default function AssetPage(props: Params) {
                 id: comment.comment_id, 
                 user: "Me", 
                 text: comment.message, 
-                date: new Date(comment.created_at).toLocaleDateString() 
+                date: formatDate(comment.created_at) 
             };
             setAsset({ ...asset, comments: [...asset.comments, newComment] });
         }
@@ -308,31 +324,22 @@ export default function AssetPage(props: Params) {
 
   const handleLock = async () => {
     if(!asset || !currentRepo) return;
-    
-    // PERMISSION CHECK
-    if (asset.lockedBy && !canUnlock) {
-        return; // UI should disable this, but safety check here
-    }
+    if (asset.lockedBy && !canUnlock) return;
 
     setIsLocking(true);
-
     try {
         const shouldLock = !asset.lockedBy;
         const url = `/api/contents/${currentRepo.owner}/${currentRepo.name}/lock?path=${encodeURIComponent(filePath)}&is_locked=${shouldLock}`;
-
         const res = await fetch(url, { method: "POST" });
         if (!res.ok) throw new Error("Failed to toggle lock");
 
-        // Re-fetch info to update lock state accurately
         const resInfo = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info?path=${encodeURIComponent(filePath)}`);
         if (resInfo.ok) {
              const data = await resInfo.json();
-             
              const locks = data.lock_events as ApiLockEvent[] | undefined;
              const latestLock = locks?.[0];
              const isLocked = latestLock?.is_locked ?? false;
              const lockedBy = isLocked ? (latestLock?.user?.username ?? "Unknown") : undefined;
-
              setAsset(prev => prev ? { ...prev, lockedBy } : null);
         }
     } catch (err) {
@@ -342,7 +349,6 @@ export default function AssetPage(props: Params) {
     }
   };
 
-  // ... (handleDownload remains same) ...
   const handleDownload = async () => {
     if(!asset?.thumb || !currentRepo) return;
     setIsDownloading(true);
@@ -350,6 +356,7 @@ export default function AssetPage(props: Params) {
         const downloadUrl = `/api/download?owner=${currentRepo.owner}&repo=${currentRepo.name}&path=${encodeURIComponent(filePath)}`;
         const response = await fetch(downloadUrl);
         if (!response.ok) throw new Error("Download failed");
+        
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -360,7 +367,7 @@ export default function AssetPage(props: Params) {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
     } catch (err) {
-        console.error("Download failed, falling back to new tab", err);
+        console.error("Download failed", err);
         if (asset.thumb) window.open(asset.thumb, '_blank');
     } finally {
         setIsDownloading(false);
@@ -381,22 +388,13 @@ export default function AssetPage(props: Params) {
     </div>
   );
 
-  const targetVersionObj: AssetVersion | undefined = asset.versions.find(v => v.id === targetVersionId);
+  const targetVersionObj = asset.versions.find(v => v.id === targetVersionId);
   const oldThumb = targetVersionObj?.thumb || "";
   const animationClass = isExiting ? "animate-fade-out-left" : "animate-fade-in-right opacity-0";
-  const isBusy = isDownloading || isLocking;
-
-  // Determine Lock Button Label
+  
   let lockLabel = "Lock";
-  if (isLocking) {
-      lockLabel = "Updating...";
-  } else if (asset.lockedBy) {
-      if (canUnlock) {
-          lockLabel = "Unlock";
-      } else {
-          lockLabel = `Locked by ${asset.lockedBy}`;
-      }
-  }
+  if (isLocking) { lockLabel = "Updating..."; } 
+  else if (asset.lockedBy) { lockLabel = canUnlock ? "Unlock" : `Locked by ${asset.lockedBy}`; }
 
   return (
     <section className="h-full w-full overflow-y-auto">
@@ -415,7 +413,9 @@ export default function AssetPage(props: Params) {
                     <span className="mx-1 text-gray-600">/</span>
                     <span className="text-gray-300">{filePath}</span>
                     <span className="mx-1 text-gray-600">•</span>
-                    {new Date(asset.modifiedAt).toLocaleString()}
+                    
+                    {/* CHANGED: Use formatted Date & Time */}
+                    {formatDate(asset.modifiedAt)}
                     
                     {asset.lockedBy && (
                         <>
@@ -430,26 +430,17 @@ export default function AssetPage(props: Params) {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button size="sm" onClick={handleDownload} loading={isDownloading} disabled={isBusy}>
+                <Button size="sm" onClick={handleDownload} loading={isDownloading}>
                     {isDownloading ? "Downloading..." : "Download"}
                 </Button>
-                
-                {/* UPDATED LOCK BUTTON */}
-                <Button 
-                    size="sm" 
-                    onClick={handleLock} 
-                    loading={isLocking} 
-                    disabled={isBusy || (!!asset.lockedBy && !canUnlock)}
-                    title={isLockedByOther && !isRepoOwner ? "Only the locker or repo owner can unlock this file" : ""}
-                >
+                <Button size="sm" onClick={handleLock} loading={isLocking} disabled={!!asset.lockedBy && !canUnlock}>
                     {lockLabel}
                 </Button>
-                
                 <Button 
                     size="sm" 
                     variant={compareMode ? "primary" : "default"}
                     onClick={() => setCompareMode(!compareMode)}
-                    disabled={versionsLoading || asset.versions.length < 2 || isBusy}
+                    disabled={versionsLoading || asset.versions.length < 2}
                 >
                 {compareMode ? "Exit Compare" : "Compare"}
                 </Button>
@@ -458,7 +449,6 @@ export default function AssetPage(props: Params) {
             
             {compareMode && (
                 <div className="mt-4 pt-4 border-t border-default flex items-center gap-4 animate-in slide-in-from-top-2">
-                    {/* ... (Compare dropdowns) ... */}
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-red-400 font-medium">Base:</span>
                         <select 
@@ -467,11 +457,17 @@ export default function AssetPage(props: Params) {
                             onChange={(e) => setTargetVersionId(e.target.value)}
                         >
                             {asset.versions.slice(1).map(v => (
-                                <option key={v.id} value={v.id}>{v.label} ({new Date(v.date).toLocaleDateString()})</option>
+                                <option key={v.id} value={v.id}>{v.label} ({formatDate(v.date)})</option>
                             ))}
                         </select>
                     </div>
-                    {/* ... */}
+                    <div className="text-gray-500">vs</div>
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className="text-green-400 font-medium">Head:</span>
+                        <span className="bg-background border border-default rounded px-2 py-1 text-gray-400 cursor-not-allowed">
+                            Current
+                        </span>
+                    </div>
                 </div>
             )}
         </Card>
@@ -479,42 +475,27 @@ export default function AssetPage(props: Params) {
         {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 pb-10">
             <div className="flex flex-col gap-4">
-                <Card 
-                    className={`p-3 bg-background flex flex-col justify-center ${animationClass}`}
-                    style={{ animationDelay: isExiting ? "0s" : "0.1s" }}
-                >
+                <Card className={`p-3 bg-background flex flex-col justify-center ${animationClass}`} style={{ animationDelay: isExiting ? "0s" : "0.1s" }}>
                     {compareMode ? (
-                        <DiffViewer 
-                            before={oldThumb} 
-                            after={asset.thumb!} 
-                            type={asset.type} 
-                        />
+                        <DiffViewer before={oldThumb} after={asset.thumb!} type={asset.type} />
                     ) : (
                         <AssetPreview src={asset.thumb} type={asset.type} alt={asset.name} />
                     )}
                 </Card>
 
-                {/* Metadata & Versions Cards ... */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* ... Metadata Card ... */}
-                     <Card 
-                        className={`p-3 ${animationClass}`}
-                        style={{ animationDelay: isExiting ? "0s" : "0.2s" }}
-                    >
+                    <Card className={`p-3 ${animationClass}`} style={{ animationDelay: isExiting ? "0s" : "0.2s" }}>
                         <SectionTitle>Metadata</SectionTitle>
                         <div className="mt-2 divide-y divide-default">
                             <KeyRow k="Type" v={asset.type} />
                             <KeyRow k="Size" v={`${(asset.sizeBytes / 1024).toFixed(1)} KB`} />
-                            <KeyRow k="Modified" v={new Date(asset.modifiedAt).toLocaleString()} />
+                            {/* CHANGED: Use formatted Date & Time */}
+                            <KeyRow k="Modified" v={formatDate(asset.modifiedAt)} />
                             <KeyRow k="Status" v={asset.status} />
                         </div>
                     </Card>
 
-                    {/* ... Versions Card ... */}
-                     <Card 
-                        className={`p-3 ${animationClass}`}
-                        style={{ animationDelay: isExiting ? "0s" : "0.3s" }}
-                    >
+                    <Card className={`p-3 ${animationClass}`} style={{ animationDelay: isExiting ? "0s" : "0.3s" }}>
                         <SectionTitle>Versions</SectionTitle>
                         <ul className="mt-2 space-y-2 max-h-60 overflow-y-auto">
                             {versionsLoading ? (
@@ -532,7 +513,8 @@ export default function AssetPage(props: Params) {
                                     <div className="flex flex-col min-w-0">
                                         <span className="font-medium truncate" title={v.label}>{v.label}</span>
                                         <span className="text-xs text-gray-500">
-                                            {new Date(v.date).toLocaleDateString()} • {v.id?.substring(0,7) ?? "—"} • {(v as any).author ?? "Unknown"}
+                                            {/* CHANGED: Use formatted Date & Time + Author Name */}
+                                            {formatDate(v.date)} • {v.id?.substring(0,7) ?? "—"} • {v.author ?? "Unknown"}
                                         </span>
                                     </div>
                                     {!compareMode && asset.versions.indexOf(v) > 0 && (
@@ -551,11 +533,7 @@ export default function AssetPage(props: Params) {
                 </div>
             </div>
 
-            <div 
-                className={animationClass}
-                style={{ animationDelay: isExiting ? "0s" : "0.4s" }}
-            >
-                {/* UPDATED: Pass isReadOnly based on lock status */}
+            <div className={animationClass} style={{ animationDelay: isExiting ? "0s" : "0.4s" }}>
                 <div className={!canModify ? "opacity-70 pointer-events-none grayscale-[0.5]" : ""}>
                     <ReviewPanel 
                         isLoading={infoLoading}
