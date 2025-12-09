@@ -33,7 +33,8 @@ CREATE TABLE public.files (
   repo_id bigint NOT NULL,
   path text NOT NULL,
   asset_status smallint NOT NULL DEFAULT '0'::smallint,
-  CONSTRAINT files_pkey PRIMARY KEY (file_id)
+  CONSTRAINT files_pkey PRIMARY KEY (file_id),
+  CONSTRAINT unique_repo_id_path UNIQUE (repo_id, path)
 );
 CREATE TABLE public.lock_events (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
