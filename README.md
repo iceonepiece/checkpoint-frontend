@@ -17,9 +17,6 @@ npm run dev
 ## Database Setup
 ### 1. Create tables
 ```bash
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
-
 CREATE TABLE public.comments (
   comment_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE,
   file_id bigint,
@@ -29,15 +26,6 @@ CREATE TABLE public.comments (
   CONSTRAINT comments_pkey PRIMARY KEY (comment_id),
   CONSTRAINT comments_github_id_fkey FOREIGN KEY (github_id) REFERENCES public.users(github_id),
   CONSTRAINT comments_file_id_fkey FOREIGN KEY (file_id) REFERENCES public.files(file_id)
-);
-CREATE TABLE public.file_versions (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  file_id bigint NOT NULL,
-  blob_sha text,
-  commit_sha text,
-  CONSTRAINT file_versions_pkey PRIMARY KEY (id),
-  CONSTRAINT file_versions_file_id_fkey FOREIGN KEY (file_id) REFERENCES public.files(file_id)
 );
 CREATE TABLE public.files (
   file_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
