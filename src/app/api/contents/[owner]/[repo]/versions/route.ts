@@ -22,7 +22,6 @@ export async function GET(
 
     try
     {
-
         const { data: commits } = await octokit.request(
             "GET /repos/{owner}/{repo}/commits?path={path}&sha={branch}",
             {
@@ -36,7 +35,7 @@ export async function GET(
         const fileVersions = [];
 
         for (const commit of commits) {
-            const { data: yy } = await octokit.request(
+            const { data: version } = await octokit.request(
                 `GET /repos/{owner}/{repo}/contents/{path}?ref=${commit.sha}`,
                 {
                     owner,
@@ -45,7 +44,9 @@ export async function GET(
                 }
             );
 
-            fileVersions.push(yy);
+            const finalVersion = { ...version, commit: commit.commit };
+            
+            fileVersions.push(finalVersion);
         }
 
         return NextResponse.json(fileVersions);

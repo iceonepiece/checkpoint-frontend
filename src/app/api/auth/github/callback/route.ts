@@ -3,14 +3,12 @@ import { Octokit } from "octokit";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { authenticate } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  // 1. Check if a session already exists via Cookie directly (faster/safer)
-  const cookieStore = await cookies();
-  const existingSession = cookieStore.get("session")?.value;
-
-  if (existingSession) {
-    // If we have a session, assume we are good and go Home
+  const auth = await authenticate();
+  
+  if (auth.ok) {
     return NextResponse.redirect(new URL('/', req.url));
   }
 
@@ -29,7 +27,8 @@ export async function GET(req: NextRequest) {
     // 3. Fetch User Info from GitHub
     const octokit = new Octokit({ auth: accessToken });
     const { data: user } = await octokit.rest.users.getAuthenticated();
-
+    
+    const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
     // 4. Upsert User into DB
