@@ -10,14 +10,24 @@ interface SelectionBarProps {
   onDownload: () => void;
   clear: () => void;
   isDownloading?: boolean;
-  isLocking?: boolean; // NEW PROP
+  isLocking?: boolean;
+  isDeleting?: boolean; // NEW PROP
 }
 
-export function SelectionBar({ count, onLock, onDelete, onDownload, clear, isDownloading = false, isLocking = false }: SelectionBarProps) {
+export function SelectionBar({ 
+  count, 
+  onLock, 
+  onDelete, 
+  onDownload, 
+  clear, 
+  isDownloading = false, 
+  isLocking = false, 
+  isDeleting = false // Default to false
+}: SelectionBarProps) {
   const show = count > 0;
   
   // Disable all actions if any async operation is in progress
-  const isBusy = isDownloading || isLocking;
+  const isBusy = isDownloading || isLocking || isDeleting;
 
   return (
     <div 
@@ -42,11 +52,15 @@ export function SelectionBar({ count, onLock, onDelete, onDownload, clear, isDow
         <Button size="sm" onClick={onDownload} loading={isDownloading} disabled={isBusy}>
           {isDownloading ? "Downloading..." : "Download"}
         </Button>
-        {/* <Button size="sm" onClick={onMove} disabled={isBusy}>Move</Button> */}
+        
         <Button size="sm" onClick={onLock} loading={isLocking} disabled={isBusy}>
-            {isLocking ? "Updating..." : "Lock"}
+            {isLocking ? "Updating..." : "Lock/Unlock"}
         </Button>
-        <Button variant="danger" size="sm" onClick={onDelete} disabled={isBusy}>Delete</Button>
+        
+        {/* UPDATED: Delete Button with Loading State */}
+        <Button variant="danger" size="sm" onClick={onDelete} loading={isDeleting} disabled={isBusy}>
+            {isDeleting ? "Deleting..." : "Delete"}
+        </Button>
         
         <div className="w-px h-4 bg-gray-700 mx-1" />
         

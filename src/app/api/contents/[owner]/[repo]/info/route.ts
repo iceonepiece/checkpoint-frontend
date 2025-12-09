@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { authenticate } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { getLockStatus } from "@/lib/helpers";
 
 const STATUS_TO_INT: Record<string, number> = {
   "Pending": 0,
@@ -79,7 +80,7 @@ export async function PUT(
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     const { owner, repo } = await context.params;
-    const { octokit } = auth;
+    const { octokit, user } = auth; // need user
     
     const body = await req.json();
     const { path, status } = body; 
@@ -91,10 +92,22 @@ export async function PUT(
 
     try {
         const { data: repoData } = await octokit.request("GET /repos/{owner}/{repo}", { owner, repo });
-
+        
         const cookieStore = await cookies();
         const supabase = createClient(cookieStore);
 
+        // 1. Check Lock Status
+        const { isLocked, lockedByUserId, lockedByUsername } = await getLockStatus(supabase, repoData.id, path);
+
+        // Rule: Only the locker can change status. 
+        // Note: Even Owner cannot change status if they didn't lock it (per prompt requirements "owner still cannot make change")
+        if (isLocked && lockedByUserId !== user.github_id) {
+             return NextResponse.json({ 
+                error: `File is locked by ${lockedByUsername}. You cannot change its status.` 
+            }, { status: 403 });
+        }
+
+        // 2. Proceed with Update
         let { data: fileRow } = await supabase
             .from("files")
             .select("file_id")
@@ -126,8 +139,8 @@ export async function PUT(
 
         return NextResponse.json({ success: true, status: statusInt });
 
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("Status Update Error:", error);
-        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

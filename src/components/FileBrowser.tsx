@@ -9,7 +9,6 @@ import { type FileItem } from "@/lib/mockFiles";
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
 import { useRepo } from "@/lib/RepoContext";
 
-// ... imports (AssetCard, FolderCard, Modals, etc) ...
 import { AssetCard } from "./file-browser/AssetCard";
 import { AssetRow } from "./file-browser/AssetRow";
 import { FolderCard } from "./file-browser/FolderCard";
@@ -18,49 +17,47 @@ import { UploadModal } from "./file-browser/modals/UploadModal";
 import { DeleteModal } from "./file-browser/modals/DeleteModal";
 import { MoveModal } from "./file-browser/modals/MoveModal";
 
-
 type ViewMode = "grid" | "list";
 
-// ... (Keep existing Utilities: getFileType, findNode, getBreadcrumbs) ...
+// --- UTILITIES ---
 function getFileType(fileName: string, type: string) {
-    if (type === "dir") return "folder";
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) return "image/" + ext;
-    if (['mp4', 'mov', 'avi', 'webm'].includes(ext || '')) return "video/" + ext;
-    if (['pdf'].includes(ext || '')) return "application/pdf";
-    if (['fbx', 'obj', 'blend', 'glb', 'gltf'].includes(ext || '')) return "model/" + ext;
-    return "file";
-}
-  
-function findNode(nodes: TreeNode[], id: string): TreeNode | undefined {
-    for (const node of nodes) {
-      if (node.id === id) return node;
-      if (node.children) {
-        const found = findNode(node.children, id);
-        if (found) return found;
-      }
-    }
-    return undefined;
-}
-  
-function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
-    const rootCrumb = { label: "Root", href: "/" };
-    if (!pathStr) return [{ label: "Root" }];
-    const ids = pathStr.split("/");
-    const pathCrumbs = ids.map((id, index) => {
-      const node = findNode(tree, id);
-      const label = node ? node.name : id;
-      const hrefPath = ids.slice(0, index + 1).join("/");
-      return { label, href: `/?path=${hrefPath}` };
-    });
-    return [rootCrumb, ...pathCrumbs];
+  if (type === "dir") return "folder";
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) return "image/" + ext;
+  if (['mp4', 'mov', 'avi', 'webm'].includes(ext || '')) return "video/" + ext;
+  if (['pdf'].includes(ext || '')) return "application/pdf";
+  if (['fbx', 'obj', 'blend', 'glb', 'gltf'].includes(ext || '')) return "model/" + ext;
+  return "file";
 }
 
+function findNode(nodes: TreeNode[], id: string): TreeNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findNode(node.children, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
+  const rootCrumb = { label: "Root", href: "/" };
+  if (!pathStr) return [{ label: "Root" }];
+  const ids = pathStr.split("/");
+  const pathCrumbs = ids.map((id, index) => {
+    const node = findNode(tree, id);
+    const label = node ? node.name : id;
+    const hrefPath = ids.slice(0, index + 1).join("/");
+    return { label, href: `/?path=${hrefPath}` };
+  });
+  return [rootCrumb, ...pathCrumbs];
+}
+
+/* ---------- MAIN COMPONENT ---------- */
 export default function FileBrowser() {
   const router = useRouter(); 
   const [view, setView] = useState<ViewMode>("grid");
-  
-  // NEW: Get user from context
   const { currentRepo, user } = useRepo();
 
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -74,11 +71,12 @@ export default function FileBrowser() {
   
   const [isDownloading, setIsDownloading] = useState(false);
   const [isLocking, setIsLocking] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const searchParams = useSearchParams();
   const currentPath = searchParams.get("path") || "";
 
-  // 1. Fetch Files (No changes here)
+  // 1. Fetch Files
   const fetchFiles = useCallback(async () => {
     if (!currentRepo) return;
 
@@ -144,19 +142,15 @@ export default function FileBrowser() {
   const clearSelection = () => setSelected({});
 
   // --- PERMISSION HELPERS ---
-
   const isRepoOwner = currentRepo?.owner === user?.username;
 
-  // Check if I can modify this specific file (Edit/Delete/Upload Over)
   const canModifyFile = (file: FileItem) => {
-    if (!file.lockedBy) return true; // Not locked = Free for all
-    return file.lockedBy === user?.username; // Must be locked by me
+    if (!file.lockedBy) return true; 
+    return file.lockedBy === user?.username; 
   };
 
-  // Check if I can unlock this specific file
   const canUnlockFile = (file: FileItem) => {
-      if (!file.lockedBy) return true; // Can lock
-      // Can unlock if: I locked it OR I am the owner
+      if (!file.lockedBy) return true; 
       return file.lockedBy === user?.username || isRepoOwner;
   };
 
@@ -164,7 +158,6 @@ export default function FileBrowser() {
 
   const handleLock = async () => {
     if (!currentRepo || !user) return;
-    
     setIsLocking(true);
 
     const selectedIds = Object.keys(selected).filter(k => selected[k]);
@@ -175,25 +168,19 @@ export default function FileBrowser() {
         if (validItems.length === 0) return;
 
         for (const item of validItems) {
-            // PERMISSION CHECK: Can I toggle this lock?
-            // 1. If Locked: Can I unlock? (Me or Owner)
-            // 2. If Unlocked: Can I lock? (Yes, anyone)
             if (item.lockedBy && !canUnlockFile(item)) {
-                console.warn(`Skipping ${item.name}: Locked by ${item.lockedBy}`);
-                continue; // Skip without erroring whole batch
+                continue; 
             }
 
             try {
                 const shouldLock = !item.lockedBy;
                 const filePath = item.path || item.name;
                 const url = `/api/contents/${currentRepo.owner}/${currentRepo.name}/lock?path=${encodeURIComponent(filePath)}&is_locked=${shouldLock}`;
-
                 await fetch(url, { method: "POST" });
             } catch (err) {
                 console.error(`Failed to toggle lock for ${item.name}`, err);
             }
         }
-        
         await fetchFiles();
         clearSelection();
     } finally {
@@ -204,11 +191,10 @@ export default function FileBrowser() {
   const handleUpload = async (filesToUpload: File[], message: string, description: string) => {
     if (!currentRepo || !user) return;
 
-    // PERMISSION CHECK: Check for overwrites on locked files
     const blockedFiles = filesToUpload.filter(newFile => {
         const existing = files.find(f => f.name === newFile.name);
-        if (!existing) return false; // New file, allowed
-        return !canModifyFile(existing); // Existing file, check lock
+        if (!existing) return false; 
+        return !canModifyFile(existing); 
     });
 
     if (blockedFiles.length > 0) {
@@ -238,58 +224,92 @@ export default function FileBrowser() {
   };
 
   const handleDelete = async (message: string) => {
-    if(!user) return;
+    if(!user || !currentRepo) return;
+    
+    setIsDeleting(true);
 
-    // PERMISSION CHECK
     const selectedIds = Object.keys(selected).filter(k => selected[k]);
     const itemsToDelete = files.filter(item => selectedIds.includes(item.id));
     
     const lockedByOthers = itemsToDelete.filter(item => !canModifyFile(item));
+    const folders = itemsToDelete.filter(item => item.isFolder);
 
     if (lockedByOthers.length > 0) {
         const names = lockedByOthers.map(i => i.name).join(", ");
         alert(`Cannot delete: The following files are locked by other users: ${names}`);
-        // Optional: Close modal or just return to let user deselect
+        setIsDeleting(false);
         return; 
     }
+    
+    const filesToDelete = itemsToDelete.filter(item => !item.isFolder);
+    
+    if (folders.length > 0) {
+        alert(`Skipping ${folders.length} folders. Folder deletion is not currently supported.`);
+    }
 
-    alert(`Simulating deletion of ${itemsToDelete.length} items. (API implementation pending)`);
-    setDeleteOpen(false);
-    clearSelection();
+    if (filesToDelete.length === 0) {
+        setDeleteOpen(false);
+        setIsDeleting(false);
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/delete`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                paths: filesToDelete.map(f => f.path || f.name),
+                message
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Deletion failed");
+        }
+        
+        await fetchFiles();
+        clearSelection();
+        setDeleteOpen(false);
+
+    } catch (err) {
+        console.error("Delete Error:", err);
+        alert("Failed to delete selected files.");
+    } finally {
+        setIsDeleting(false);
+    }
   };
 
-  // ... (handleDownload, handleMove remain same) ...
   const handleDownload = async () => {
-      // ... (existing download logic) ...
-      // Just copy paste logic from previous message if needed, omitting for brevity
-      if (!currentRepo) return;
-      setIsDownloading(true);
-      const selectedIds = Object.keys(selected).filter(k => selected[k]);
-      const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
-      const validItems = itemsToDownload.filter(i => !i.isFolder);
-      try {
-          if (validItems.length === 0) return;
-          for (const item of validItems) {
-              try {
-                  const fileName = item.name;
-                  const filePath = item.path || fileName;
-                  const downloadUrl = `/api/download?owner=${currentRepo.owner}&repo=${currentRepo.name}&path=${encodeURIComponent(filePath)}`;
-                  const response = await fetch(downloadUrl);
-                  if (!response.ok) throw new Error("Download failed via proxy");
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const link = document.createElement("a");
-                  link.href = url;
-                  link.download = fileName;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  window.URL.revokeObjectURL(url);
-              } catch (err) { console.error(err); if(item.thumb) window.open(item.thumb, '_blank'); }
-          }
-          clearSelection();
-      } finally { setIsDownloading(false); }
+    if (!currentRepo) return;
+    setIsDownloading(true);
+    const selectedIds = Object.keys(selected).filter(k => selected[k]);
+    const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
+    const validItems = itemsToDownload.filter(i => !i.isFolder);
+    try {
+        if (validItems.length === 0) return;
+        for (const item of validItems) {
+            try {
+                const fileName = item.name;
+                const filePath = item.path || fileName;
+                const downloadUrl = `/api/download?owner=${currentRepo.owner}&repo=${currentRepo.name}&path=${encodeURIComponent(filePath)}`;
+                const response = await fetch(downloadUrl);
+                if (!response.ok) throw new Error("Download failed via proxy");
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            } catch (err) { console.error(err); if(item.thumb) window.open(item.thumb, '_blank'); }
+        }
+        clearSelection();
+    } finally { setIsDownloading(false); }
   };
+  
   const handleMove = async (targetId: string, message: string) => { setMoveOpen(false); clearSelection(); };
 
   if (!currentRepo) {
@@ -334,6 +354,7 @@ export default function FileBrowser() {
         onDownload={handleDownload}
         isDownloading={isDownloading} 
         isLocking={isLocking}
+        isDeleting={isDeleting} // PASSED
         clear={clearSelection} 
       />
 
@@ -397,6 +418,7 @@ export default function FileBrowser() {
       )}
       
       <UploadModal isOpen={isUploadOpen} onClose={() => setUploadOpen(false)} currentPath={currentPath} existingFiles={files} onUpload={handleUpload} />
+      {/* Pass isDeleting if you update Modal, but Button handles feedback now */}
       <DeleteModal isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} selectedCount={Object.values(selected).filter(Boolean).length} onConfirm={handleDelete} />
       <MoveModal isOpen={isMoveOpen} onClose={() => setMoveOpen(false)} selectedCount={Object.values(selected).filter(Boolean).length} onConfirm={handleMove} />
     </div>
