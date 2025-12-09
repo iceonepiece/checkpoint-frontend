@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { getLockStatus } from "@/lib/helpers";
 
+
 export async function POST(
     req: NextRequest,
     context: { params: Promise<{ owner: string; repo: string }> }
@@ -73,6 +74,27 @@ export async function POST(
             message: fullCommitMessage,
             files: filesToCommit
         });
+
+        // Do track uploaded files
+        // Find repo_id
+        const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+
+        const repoId = repoData.id;
+        const cookieStore = await cookies();
+        const supabase = createClient(cookieStore);
+
+        await Promise.all(
+            files.map(async (file) => {
+                const filePath = currentPath ? `${currentPath}/${file.name}` : file.name;
+
+                return supabase
+                    .from("files")
+                    .upsert({
+                        repo_id: repoId,
+                        path: filePath
+                    });
+            })
+        );
 
         return NextResponse.json({
             message: `Successfully uploaded ${files.length} files`,
