@@ -6,7 +6,7 @@ import { isFileObject } from "@/lib/helpers";
 
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ owner: string; repo: string }> } // 1. Update Type
+  context: { params: Promise<{ owner: string; repo: string }> }
 ) {
   const auth = await authenticate();
 
@@ -15,8 +15,6 @@ export async function PUT(
   }
 
   const { octokit } = auth;
-
-  // 2. Await Params
   const { owner, repo } = await context.params;
 
   const search = req.nextUrl.searchParams;
@@ -61,10 +59,10 @@ export async function PUT(
     } else {
         return NextResponse.json({ error: "This path is not a valid file" }, { status: 400 });
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err.message ?? "Unable to fetch repository contents" },
-      { status: err.status ?? 500 }
+      { error: (err as Error).message ?? "Unable to fetch repository contents" },
+      { status: 500 }
     );
   }
 }

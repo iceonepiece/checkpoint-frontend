@@ -1,9 +1,7 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
-import { Octokit } from "octokit";
-import { userHasAccessToFile } from "@/lib/authorization";
 
 export async function POST(req : Request) {
     const auth = await authenticate();
@@ -24,11 +22,8 @@ export async function POST(req : Request) {
 
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
-    const { octokit } = auth;
 
     try {
-        const fileAuthorization = await userHasAccessToFile(file_id, supabase, octokit);
-
         const { data, error } = await supabase
             .from("comments")
             .insert({
@@ -45,7 +40,7 @@ export async function POST(req : Request) {
 
         return NextResponse.json({ comment: data });
 
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        return NextResponse.json({ error: (err as Error).message }, { status: 500 });
     }
 }

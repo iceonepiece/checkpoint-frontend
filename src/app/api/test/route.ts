@@ -14,21 +14,7 @@ export async function GET() {
   {
     const { data: user } = await octokit.rest.users.getAuthenticated();
 
-
-
-    const { data: commits } = await octokit.request(
-      "GET /repos/{owner}/{repo}/commits?path={path}&sha={branch}",
-      {
-        owner: 'iceonepiece',
-        repo: 'web-hook-test',
-        path: 'flag.png',
-        branch: "main"
-      }
-    );
-
     const commitSha = "83d4fefe8457b367ad94b807e432987511f00505";
-  
-
     const filePath = 'flag.png';
 
     const { data: yy } = await octokit.request(
@@ -39,7 +25,6 @@ export async function GET() {
         path: filePath,
       }
     );
-
 
     console.log(yy);
 

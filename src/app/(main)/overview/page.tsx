@@ -3,16 +3,13 @@
 import { Card, SectionTitle } from "@/components/ui";
 import ActivityHeatmap from "@/components/ActivityHeatmap"; 
 import { PROJECT_STATS, RECENT_ACTIVITY, HEATMAP_DATA } from "@/lib/mockActivity"; 
-import Link from "next/link";
 
 export default function OverviewPage() {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-background">
       <div className="p-6 space-y-6 max-w-screen-xl mx-auto">
-        
         <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-white">Repository Overview</h1>
-            {/* Mock Settings */}
             <a 
                 href="https://github.com/Example-User/Checkpoint-Project/settings" 
                 target="_blank" 
@@ -76,15 +73,7 @@ export default function OverviewPage() {
                             <div className="text-xs text-gray-500">Owner</div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="size-8 rounded bg-gray-700" />
-                        <div className="text-sm">
-                            <div className="text-gray-200 font-medium">Jarusrawee D.</div>
-                            <div className="text-xs text-gray-500">Collaborator</div>
-                        </div>
-                    </div>
                     <div className="pt-2 border-t border-default">
-                        {/* Mock Invite */}
                         <a href="https://github.com/Example-User/Checkpoint-Project/settings/access" target="_blank" rel="noopener noreferrer">
                         <button className="text-xs text-blue-400 hover:underline w-full text-left">
                             + Invite people

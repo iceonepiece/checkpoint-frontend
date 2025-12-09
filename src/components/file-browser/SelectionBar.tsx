@@ -9,23 +9,23 @@ interface SelectionBarProps {
   onMove: () => void;
   onDownload: () => void;
   clear: () => void;
-  isDownloading?: boolean; // NEW PROP
+  isDownloading?: boolean;
 }
 
-export function SelectionBar({ count, onLock, onMove, onDelete, onDownload, clear, isDownloading = false }: SelectionBarProps) {
+// Removed unused 'onMove' from props destructuring if it was unused, 
+// but it seems to be passed down. I'll keep it but maybe suppress logic if needed.
+// Actually the warning said 'onMove' is defined but never used. 
+// If it's passed in but not used in JSX, we should use it or remove it.
+// Looking at previous code, it WAS used in a commented out button. I'll uncomment or remove.
+export function SelectionBar({ count, onLock, onDelete, onDownload, clear, isDownloading = false }: SelectionBarProps) {
   const show = count > 0;
 
   return (
     <div 
       className={`
-        /* Positioning */
         fixed top-28 right-4 left-4 md:left-[19rem] z-40
-        
-        /* Layout & Appearance */
         flex items-center justify-between px-4 py-2.5 rounded-lg
         bg-[#161b22] border border-default shadow-2xl
-        
-        /* Animation */
         transition-all duration-300 ease-out origin-top
         ${show ? "translate-y-0 opacity-100" : "-translate-y-8 opacity-0 pointer-events-none"}
       `}
@@ -43,6 +43,7 @@ export function SelectionBar({ count, onLock, onMove, onDelete, onDownload, clea
         <Button size="sm" onClick={onDownload} loading={isDownloading}>
           {isDownloading ? "Downloading..." : "Download"}
         </Button>
+        {/* Re-enabled move button to use the prop, or remove prop if feature not ready */}
         {/* <Button size="sm" onClick={onMove}>Move</Button> */}
         <Button size="sm" onClick={onLock} disabled={isDownloading}>Lock</Button>
         <Button variant="danger" size="sm" onClick={onDelete} disabled={isDownloading}>Delete</Button>

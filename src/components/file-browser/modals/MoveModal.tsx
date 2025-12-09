@@ -4,7 +4,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui";
 import { MOCK_TREE, TreeNode } from "@/lib/mockFolderTree";
 
-/* ---------- UTILITIES ---------- */
+interface MoveModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    selectedCount: number;
+    onConfirm: (targetId: string, message: string) => void;
+}
+
 function flattenFolders(nodes: TreeNode[], parentPath = "assets"): { id: string; path: string }[] {
   let folders: { id: string; path: string }[] = [];
   nodes.forEach(node => {
@@ -17,7 +23,7 @@ function flattenFolders(nodes: TreeNode[], parentPath = "assets"): { id: string;
   return folders;
 }
 
-export function MoveModal({ isOpen, onClose, selectedCount, onConfirm }: any) {
+export function MoveModal({ isOpen, onClose, selectedCount, onConfirm }: MoveModalProps) {
   const [message, setMessage] = useState("");
   const [description, setDescription] = useState("");
   const [targetId, setTargetId] = useState("chars"); 

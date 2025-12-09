@@ -4,6 +4,6 @@ export function isFileObject(value: unknown): value is { type: "file" } {
         value !== null &&
         !Array.isArray(value) &&
         "type" in value &&
-        (value as any).type === "file"
+        (value as { type: string }).type === "file"
     );
 }

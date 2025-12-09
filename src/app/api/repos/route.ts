@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
 
-  // 1. Authenticate user
   const auth = await authenticate();
 
   if (!auth.ok) {

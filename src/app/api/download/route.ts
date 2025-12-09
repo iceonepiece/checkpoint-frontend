@@ -4,7 +4,6 @@ import { authenticate } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   const auth = await authenticate();
 
-  // 1. Check Authentication
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
@@ -20,8 +19,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 2. Get Metadata (to get the download_url)
-    // We do NOT ask for the content itself here to keep it fast
     const { data } = await octokit.rest.repos.getContent({
       owner,
       repo,
@@ -32,8 +29,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Not a downloadable file" }, { status: 400 });
     }
 
-    // 3. Fetch the RAW stream using the Token
-    // We fetch from the GitHub CDN/Raw URL, but inject the Authorization header
     const fileResponse = await fetch(data.download_url, {
       headers: {
         "Authorization": `Bearer ${githubToken}`
@@ -44,7 +39,6 @@ export async function GET(req: NextRequest) {
         throw new Error(`GitHub upstream error: ${fileResponse.statusText}`);
     }
 
-    // 4. Stream the body directly to the client (Zero-Copy / Low Latency)
     const headers = new Headers();
     headers.set("Content-Type", "application/octet-stream");
     headers.set("Content-Disposition", `attachment; filename="${data.name}"`);
@@ -55,7 +49,7 @@ export async function GET(req: NextRequest) {
       headers,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Download Proxy Error:", error);
     return NextResponse.json({ error: "Failed to stream file" }, { status: 500 });
   }

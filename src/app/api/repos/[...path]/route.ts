@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { Octokit } from "octokit";
 
 export async function GET(
@@ -6,13 +6,12 @@ export async function GET(
   { params }: { params: { path?: string[] } }
 ) {
   const getParams = await params;
-  const pathArray = getParams.path ?? [];       // [] if no path
-  const path = pathArray.join("/");          // "src/index.js"
+  const pathArray = getParams.path ?? []; 
+  const path = pathArray.join("/");
 
   try 
   {
-
-    const accessToken = "xxx"
+    const accessToken = "xxx"; // NOTE: This looks like a placeholder, consider removing or using env
     
     const octokit = new Octokit({ auth: accessToken });
 
@@ -26,7 +25,7 @@ export async function GET(
     const { data: content } = await octokit.rest.repos.getContent({
       owner: repo.owner.login,
       repo: repo.name,
-      path,      // empty = repo root
+      path, 
     });
 
     return NextResponse.json(content);
@@ -35,5 +34,4 @@ export async function GET(
     console.error("Error:", error);
     return NextResponse.json({ error: error }, { status: 500 });
 }
-
 }

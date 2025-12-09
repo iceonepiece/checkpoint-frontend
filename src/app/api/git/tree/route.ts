@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
   const { octokit } = auth;
 
   try {
-    // Fetch recursive tree
     const { data } = await octokit.rest.git.getTree({
       owner,
       repo,
@@ -27,12 +26,11 @@ export async function GET(req: NextRequest) {
       recursive: "true",
     });
 
-    // Filter for directories only to build the folder tree
     const folders = data.tree.filter((item) => item.type === "tree");
 
     return NextResponse.json({ tree: folders });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Tree Fetch Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

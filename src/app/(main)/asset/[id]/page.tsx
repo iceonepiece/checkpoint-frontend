@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, use, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Asset } from "@/lib/mockAssets"; 
+// 1. AssetVersion is imported and will be used below
+import { Asset, AssetVersion } from "@/lib/mockAssets"; 
 import AssetPreview from "@/components/AssetPreview";
 import DiffViewer from "@/components/DiffViewer";
 import ReviewPanel from "@/components/ReviewPanel";
-// Removed FolderSidebar import
 import { Card, KeyRow, SectionTitle, Button, LoadingSpinner } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import Link from "next/link";
@@ -14,6 +14,31 @@ import { useRepo } from "@/lib/RepoContext";
 
 type Params = { params: Promise<{ id: string }> };
 
+// --- Interfaces for API Responses ---
+interface ApiComment {
+  comment_id: string;
+  user: {
+    username: string;
+    avatar_url: string;
+  } | null;
+  message: string;
+  created_at: string;
+}
+
+interface ApiVersion {
+  sha: string;
+  commit: {
+    message: string;
+    author: {
+      date: string;
+      name: string;
+    };
+  };
+  download_url: string;
+  size: number;
+}
+
+// Map DB Integers to UI Strings
 const STATUS_MAP: Record<number, "Pending" | "Approved" | "Needs changes"> = {
   0: "Pending",
   1: "Approved",
@@ -31,37 +56,39 @@ function getFileType(fileName: string) {
 
 export default function AssetPage(props: Params) {
   const router = useRouter();
-  const params = use(props.params);
+  
+  // Unwrap params
+  const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
+
+  useEffect(() => {
+    props.params.then(setResolvedParams);
+  }, [props.params]);
+
   const { currentRepo } = useRepo();
 
-  const filePath = decodeURIComponent(params.id);
+  const filePath = resolvedParams ? decodeURIComponent(resolvedParams.id) : "";
   
-  // Data State
   const [asset, setAsset] = useState<Asset | null>(null);
   const [fileId, setFileId] = useState<number | null>(null); 
   
-  // Loading States
   const [mainLoading, setMainLoading] = useState(true); 
   const [infoLoading, setInfoLoading] = useState(true); 
   const [versionsLoading, setVersionsLoading] = useState(true); 
   const [isDownloading, setIsDownloading] = useState(false); 
   
-  // Animation State
   const [isExiting, setIsExiting] = useState(false);
 
-  // UI State
   const [error, setError] = useState("");
   const [compareMode, setCompareMode] = useState(false);
   const [targetVersionId, setTargetVersionId] = useState<string>("");
 
-  // --- 1. DATA LOADING EFFECT ---
   useEffect(() => {
+    if (!resolvedParams) return;
     let isMounted = true;
 
     async function loadData() {
         if (!currentRepo) return;
 
-        // A. Handle Exit Animation
         if (asset) {
             setIsExiting(true);
             await new Promise(resolve => setTimeout(resolve, 300)); 
@@ -76,7 +103,6 @@ export default function AssetPage(props: Params) {
         const baseUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}`;
 
         try {
-            // B. Fetch Critical Metadata
             const resMeta = await fetch(`${baseUrl}?path=${encodeURIComponent(filePath)}`);
             
             if (resMeta.status === 404) {
@@ -109,7 +135,6 @@ export default function AssetPage(props: Params) {
                 setVersionsLoading(true);
             }
 
-            // C. Fetch Info
             fetch(`${baseUrl}/info?path=${encodeURIComponent(filePath)}`)
                 .then(async (res) => {
                     if (res.ok) {
@@ -118,10 +143,10 @@ export default function AssetPage(props: Params) {
 
                         if (data.file_id) setFileId(data.file_id);
 
-                        const statusInt = data.asset_status ?? 0;
+                        const statusInt = (data.asset_status as number) ?? 0;
                         const statusStr = STATUS_MAP[statusInt] || "Pending";
 
-                        const dbComments = data.comments?.map((c: any) => ({
+                        const dbComments = data.comments?.map((c: ApiComment) => ({
                             id: c.comment_id,
                             user: c.user?.username || "User", 
                             avatarUrl: c.user?.avatar_url,
@@ -132,17 +157,16 @@ export default function AssetPage(props: Params) {
                         setAsset(prev => prev ? { ...prev, status: statusStr, comments: dbComments } : null);
                     }
                 })
-                .catch(console.warn)
+                .catch((err) => console.warn("Info fetch failed", err))
                 .finally(() => isMounted && setInfoLoading(false));
 
-            // D. Fetch Versions
             fetch(`${baseUrl}/versions?path=${encodeURIComponent(filePath)}`)
                 .then(async (res) => {
                     if (res.ok) {
                         const versionData = await res.json();
                         if (!isMounted) return;
 
-                        const mappedVersions = Array.isArray(versionData) ? versionData.map((v: any) => ({
+                        const mappedVersions = Array.isArray(versionData) ? versionData.map((v: ApiVersion) => ({
                             id: v.sha,
                             label: v.commit?.message || `Commit ${v.sha.substring(0, 7)}`, 
                             date: v.commit?.author?.date || new Date().toISOString(),
@@ -168,10 +192,10 @@ export default function AssetPage(props: Params) {
                 .catch(console.error)
                 .finally(() => isMounted && setVersionsLoading(false));
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (isMounted) {
                 console.error(err);
-                setError(err.message);
+                setError((err instanceof Error) ? err.message : "An error occurred");
                 setMainLoading(false);
             }
         }
@@ -179,9 +203,9 @@ export default function AssetPage(props: Params) {
 
     loadData();
     return () => { isMounted = false; };
-  }, [currentRepo, filePath]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRepo, filePath, resolvedParams]);
 
-  // --- HANDLERS (Same as before) ---
   const handleStatusChange = async (newStatus: "Needs changes" | "Pending" | "Approved") => {
       if(!asset || !currentRepo) return;
       setAsset({ ...asset, status: newStatus }); 
@@ -191,6 +215,7 @@ export default function AssetPage(props: Params) {
             method: "PUT",
             body: JSON.stringify({ path: filePath, status: newStatus })
         });
+        
         if (res.ok && !fileId) {
              const resInfo = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info?path=${encodeURIComponent(filePath)}`);
              if (resInfo.ok) {
@@ -219,7 +244,9 @@ export default function AssetPage(props: Params) {
                   currentFileId = data.file_id;
                   setFileId(currentFileId);
               }
-          } catch (e) { return; }
+          } catch { 
+             return; 
+          }
       }
 
       if (!currentFileId) return;
@@ -274,9 +301,7 @@ export default function AssetPage(props: Params) {
   };
 
   if (!currentRepo) return <div className="p-10 text-gray-500">Loading repository context...</div>;
-  
-  // Main Loading (Centered)
-  if (mainLoading) return (
+  if (!resolvedParams || mainLoading) return (
       <div className="flex flex-col items-center justify-center h-full">
           <LoadingSpinner text="Loading asset..." />
       </div>
@@ -289,15 +314,16 @@ export default function AssetPage(props: Params) {
     </div>
   );
 
-  const targetVersionObj = asset.versions.find(v => v.id === targetVersionId);
-  const oldThumb = (targetVersionObj as any)?.thumb || "";
+  // 2. Use AssetVersion to explicitly type the found object
+  const targetVersionObj: AssetVersion | undefined = asset.versions.find(v => v.id === targetVersionId);
+  // 3. Removed 'as any' cast, accessing thumb safely via optional chaining
+  const oldThumb = targetVersionObj?.thumb || "";
+  
   const animationClass = isExiting ? "animate-fade-out-left" : "animate-fade-in-right opacity-0";
 
   return (
     <section className="h-full w-full overflow-y-auto">
       <div className="space-y-6 px-6 py-6 max-w-screen-xl mx-auto">
-        
-        {/* Header - Delay: 0s */}
         <Card className={`p-4 shrink-0 ${animationClass}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -369,11 +395,9 @@ export default function AssetPage(props: Params) {
             )}
         </Card>
 
-        {/* Content Area */}
+        {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 pb-10">
             <div className="flex flex-col gap-4">
-                
-                {/* Preview - Delay: 0.1s */}
                 <Card 
                     className={`p-3 bg-background flex flex-col justify-center ${animationClass}`}
                     style={{ animationDelay: isExiting ? "0s" : "0.1s" }}
@@ -390,7 +414,6 @@ export default function AssetPage(props: Params) {
                 </Card>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Metadata - Delay: 0.2s */}
                     <Card 
                         className={`p-3 ${animationClass}`}
                         style={{ animationDelay: isExiting ? "0s" : "0.2s" }}
@@ -404,7 +427,6 @@ export default function AssetPage(props: Params) {
                         </div>
                     </Card>
 
-                    {/* Versions - Delay: 0.3s */}
                     <Card 
                         className={`p-3 ${animationClass}`}
                         style={{ animationDelay: isExiting ? "0s" : "0.3s" }}
@@ -445,7 +467,6 @@ export default function AssetPage(props: Params) {
                 </div>
             </div>
 
-            {/* Review Panel - Delay: 0.4s */}
             <div 
                 className={animationClass}
                 style={{ animationDelay: isExiting ? "0s" : "0.4s" }}

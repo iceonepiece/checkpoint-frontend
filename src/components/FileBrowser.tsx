@@ -65,18 +65,16 @@ export default function FileBrowser() {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   
-  // Modal States
   const [isUploadOpen, setUploadOpen] = useState(false);
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [isMoveOpen, setMoveOpen] = useState(false);
   
-  // Download Loading State
   const [isDownloading, setIsDownloading] = useState(false);
   
   const searchParams = useSearchParams();
   const currentPath = searchParams.get("path") || "";
 
-  // 1. Fetch Files from GitHub API
+  // 1. Fetch Files
   const fetchFiles = useCallback(async () => {
     if (!currentRepo) return;
 
@@ -89,9 +87,8 @@ export default function FileBrowser() {
 
       const res = await fetch(endpoint);
       
-      // Handle 404 gracefully (happens during repo switch)
       if (res.status === 404) {
-        console.warn("Path not found in this repo, redirecting to root...");
+        console.warn("Path not found, redirecting...");
         setFiles([]); 
         setLoading(false);
         router.push("/"); 
@@ -103,6 +100,7 @@ export default function FileBrowser() {
       const data = await res.json();
       
       if (Array.isArray(data)) {
+        // Define a type for the raw API response items
         const mappedFiles: FileItem[] = data.map((item: any) => {
           const type = getFileType(item.name, item.type);
           return {
@@ -114,8 +112,9 @@ export default function FileBrowser() {
             isFolder: item.type === "dir",
             path: item.path,
             thumb: item.download_url,
-            // --- FIX HERE: Pass the commentsCount from API to state ---
-            commentsCount: item.commentsCount || 0 
+            commentsCount: item.commentsCount || 0,
+            lockedBy: item.lockedBy,
+            lockedAt: item.lockedAt
           };
         });
         setFiles(mappedFiles);
@@ -142,6 +141,31 @@ export default function FileBrowser() {
   const clearSelection = () => setSelected({});
 
   // --- HANDLERS ---
+
+  const handleLock = async () => {
+    if (!currentRepo) return;
+
+    const selectedIds = Object.keys(selected).filter(k => selected[k]);
+    const itemsToLock = files.filter(item => selectedIds.includes(item.id));
+    const validItems = itemsToLock.filter(i => !i.isFolder);
+
+    if (validItems.length === 0) return;
+
+    for (const item of validItems) {
+        try {
+            const shouldLock = !item.lockedBy;
+            const filePath = item.path || item.name;
+            const url = `/api/contents/${currentRepo.owner}/${currentRepo.name}/lock?path=${encodeURIComponent(filePath)}&is_locked=${shouldLock}`;
+
+            await fetch(url, { method: "POST" });
+        } catch (err) {
+            console.error(`Failed to toggle lock for ${item.name}`, err);
+        }
+    }
+    
+    fetchFiles();
+    clearSelection();
+  };
 
   const handleUpload = async (file: File, message: string, description: string) => {
     if (!currentRepo) return;
@@ -173,7 +197,6 @@ export default function FileBrowser() {
 
     const selectedIds = Object.keys(selected).filter(k => selected[k]);
     const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
-    
     const validItems = itemsToDownload.filter(i => !i.isFolder);
 
     try {
@@ -191,7 +214,6 @@ export default function FileBrowser() {
                 if (!response.ok) throw new Error("Download failed via proxy");
                 
                 const blob = await response.blob();
-                
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.href = url;
@@ -199,7 +221,6 @@ export default function FileBrowser() {
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
                 window.URL.revokeObjectURL(url);
                 
             } catch (err) {
@@ -214,17 +235,16 @@ export default function FileBrowser() {
   };
 
   const handleDelete = async (message: string) => {
-    alert("Delete logic here");
+    // Implement delete logic with API call
+    console.log(`Deleting with message: ${message}`);
     setDeleteOpen(false);
     clearSelection();
   };
+  
   const handleMove = async (targetId: string, message: string) => {
-    alert("Move logic here");
+    // Implement move logic
+    console.log(`Moving to ${targetId} with message: ${message}`);
     setMoveOpen(false);
-    clearSelection();
-  };
-  const handleLock = () => {
-    alert("Locking logic here");
     clearSelection();
   };
 

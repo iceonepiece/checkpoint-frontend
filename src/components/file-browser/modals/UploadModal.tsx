@@ -6,7 +6,15 @@ import { Icon } from "@/components/Icon";
 import { fmtBytes } from "../utils";
 import { FileItem } from "@/lib/mockFiles";
 
-export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpload }: any) {
+interface UploadModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    currentPath: string;
+    existingFiles: FileItem[];
+    onUpload: (file: File, message: string, description: string) => Promise<void>;
+}
+
+export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpload }: UploadModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [description, setDescription] = useState("");
@@ -18,7 +26,7 @@ export function UploadModal({ isOpen, onClose, currentPath, existingFiles, onUpl
     if (isOpen) {
         setIsVisible(true);
     } else {
-        const timer = setTimeout(() => setIsVisible(false), 300); // 300ms matches CSS animation
+        const timer = setTimeout(() => setIsVisible(false), 300); 
         return () => clearTimeout(timer);
     }
   }, [isOpen]);

@@ -19,7 +19,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
 
   const { repos, setRepos, currentRepo, setCurrentRepo, loading, setLoading } = useRepo();
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (repoRef.current && !repoRef.current.contains(event.target as Node)) {
@@ -65,15 +64,11 @@ export default function TopNav({ user }: { user: AuthUser }) {
   }, [repos.length, currentRepo, setRepos, setCurrentRepo, setLoading]);
 
   const repoBaseUrl = currentRepo ? `https://github.com/${currentRepo.fullName}` : "#";
-
-  // Check if current user owns the repo
   const isOwner = currentRepo ? currentRepo.owner === user.username : false;
 
   const tabs = [
     { label: "View on GitHub", href: `${repoBaseUrl}`, external: true },
-    // { label: "Overview", href: "/overview" },
     { label: "Repository", href: "/" },
-    // { label: "View on GitHub", href: `${repoBaseUrl}`, external: true },
     { label: "Issues", href: `${repoBaseUrl}/issues`, external: true },
     { label: "Pull requests", href: `${repoBaseUrl}/pulls`, external: true },
     { label: "Settings", href: `${repoBaseUrl}/settings`, external: true, disabled: !isOwner },
@@ -96,8 +91,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
   return (
     <header className="sticky top-0 z-50 border-b border-default bg-[var(--bg-header)] backdrop-blur">
       <div className="h-14 px-4 flex items-center gap-4">
-
-        {/* LEFT: Site Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="size-8 rounded-md bg-white text-black flex items-center justify-center">
@@ -107,7 +100,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
           </Link>
         </div>
 
-        {/* CENTER: Repository Selector */}
         <div className="flex-1 flex justify-center min-w-0 px-2 md:px-6">
           <div className="relative w-full" ref={repoRef}>
             <button
@@ -170,7 +162,6 @@ export default function TopNav({ user }: { user: AuthUser }) {
           </div>
         </div>
 
-        {/* RIGHT: User Profile */}
         <div className="flex items-center gap-3 shrink-0 relative" ref={profileRef}>
           <button 
             onClick={() => setProfileOpen(!profileOpen)}
@@ -230,13 +221,12 @@ export default function TopNav({ user }: { user: AuthUser }) {
              );
            }
            
-           // Logic to handle disabled state (e.g. Settings if not owner)
            const isDisabled = !currentRepo || (tab.disabled === true);
 
            return (
              <a 
                 key={tab.label} 
-                href={isDisabled ? undefined : tab.href} // Remove href if disabled
+                href={isDisabled ? undefined : tab.href}
                 target={isDisabled ? undefined : "_blank"}
                 rel="noopener noreferrer"
                 className={`

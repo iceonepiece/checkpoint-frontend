@@ -4,7 +4,14 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 
-export function DeleteModal({ isOpen, onClose, selectedCount, onConfirm }: any) {
+interface DeleteModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    selectedCount: number;
+    onConfirm: (message: string) => void;
+}
+
+export function DeleteModal({ isOpen, onClose, selectedCount, onConfirm }: DeleteModalProps) {
   const [message, setMessage] = useState("");
   const [description, setDescription] = useState("");
   const [isVisible, setIsVisible] = useState(false);

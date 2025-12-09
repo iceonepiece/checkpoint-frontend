@@ -3,7 +3,16 @@ export type Comment = {
   user: string;
   text: string;
   date: string;
-  avatarUrl?: string; // Added this field
+  avatarUrl?: string; 
+};
+
+// Extracted and updated Version type
+export type AssetVersion = {
+  id: string;
+  label: string;
+  date: string;
+  thumb?: string;      // Added
+  sizeBytes?: number;  // Added
 };
 
 export type Asset = {
@@ -13,7 +22,7 @@ export type Asset = {
   sizeBytes: number;
   modifiedAt: string;
   thumb?: string;     
-  versions: { id: string; label: string; date: string }[];
+  versions: AssetVersion[]; // Updated to use the new type
   status: "Needs changes" | "Pending" | "Approved";
   lockedBy?: string;
   comments: Comment[];

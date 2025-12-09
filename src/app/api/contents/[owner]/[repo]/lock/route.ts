@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { isFileObject } from "@/lib/helpers";  
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ owner: string; repo: string }> } // 1. Update Type
+  context: { params: Promise<{ owner: string; repo: string }> }
 ) {
   const auth = await authenticate();
 
@@ -15,65 +14,67 @@ export async function POST(
   }
 
   const { octokit } = auth;
-
-  // 2. Await Params
   const { owner, repo } = await context.params;
 
   const search = req.nextUrl.searchParams;
-  const path = search.get("path") ?? "";
-  const branch = search.get("branch") ?? "main";
-  const isLocked = search.get("is_locked") ?? true;
+  const path = search.get("path");
+  const isLockedParam = search.get("is_locked");
+
+  if (!path) {
+      return NextResponse.json({ error: "Path is required" }, { status: 400 });
+  }
+
+  const isLocked = isLockedParam === "false" ? false : true;
 
   try {
-    const { data: contentData } = await octokit.rest.repos.getContent({
-        owner,
-        repo,
-        path,
-        ref: branch,
+    const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+    const repoId = repoData.id;
+
+    const cookieStore = await cookies(); 
+    const supabase = createClient(cookieStore);
+
+    let { data: fileRow } = await supabase
+        .from("files")
+        .select("file_id")
+        .eq("repo_id", repoId)
+        .eq("path", path)
+        .maybeSingle();
+
+    if (!fileRow) {
+        const { data: newFile, error: createError } = await supabase
+            .from("files")
+            .insert({ repo_id: repoId, path })
+            .select("file_id")
+            .single();
+        
+        if (createError) throw createError;
+        fileRow = newFile;
+    }
+
+    if (!fileRow) throw new Error("Failed to resolve file ID");
+
+    const { error: lockError } = await supabase
+        .from("lock_events")
+        .insert({
+            file_id: fileRow.file_id,
+            is_locked: isLocked,
+            github_id: auth.user.github_id 
+        });
+
+    if (lockError) {
+        return NextResponse.json({ error: lockError.message }, { status: 500 });
+    }  
+
+    return NextResponse.json({ 
+        message: isLocked ? 'File locked' : 'File unlocked', 
+        isLocked 
     });
 
-    if (isFileObject(contentData)) {
-        const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
-    
-        const repoId = repoData.id;
-        const cookieStore = await cookies(); 
-        const supabase = createClient(cookieStore);
-
-        const { data: fileRow, error } = await supabase
-            .from("files")
-            .select()
-            .eq("repo_id", repoId)
-            .eq("path", path)
-            .single();
-
-        if (error && error.code !== 'PGRST116') { // Ignore "no rows found" error
-            console.error("Error:", error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
-        }
-
-        if (fileRow) {
-            const { error: lockError } = await supabase
-                .from("lock_events")
-                .insert({
-                    file_id: fileRow.file_id,
-                    is_locked: isLocked,
-                    github_id: auth.user.id // Fixed: use auth.user.id not auth.userId
-                });
-
-            if (lockError) {
-                console.error("Error:", lockError);
-                return NextResponse.json({ error: lockError.message }, { status: 500 });
-            }  
-        }
-
-        return NextResponse.json({ text: 'successfully updated lock'});
-    } else {
-        return NextResponse.json({ error: "This path is not a valid file" }, { status: 400 });
-    }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("API Error:", err);
     return NextResponse.json(
-      { error: err.message ?? "Unable to fetch repository contents" },
-      { status: err.status ?? 500 }
+      { error: (err as Error).message ?? "Internal Server Error" },
+      { status: 500 }
     );
   }
 }

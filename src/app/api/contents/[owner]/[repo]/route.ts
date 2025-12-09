@@ -3,6 +3,11 @@ import { authenticate } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 
+// interface FileItem {
+//     path: string;
+//     [key: string]: unknown;
+// }
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ owner: string; repo: string }> }
@@ -21,7 +26,6 @@ export async function GET(
   const branch = search.get("branch") || undefined;
 
   try {
-    // 1. Fetch File List from GitHub
     const { data: githubData } = await octokit.rest.repos.getContent({
       owner,
       repo,
@@ -29,51 +33,63 @@ export async function GET(
       ref: branch,
     });
 
-    // If it's a single file (not a folder), return as is (AssetPage handles details)
     if (!Array.isArray(githubData)) {
       return NextResponse.json(githubData);
     }
 
-    // 2. Fetch Comment Counts from Supabase
-    // We need the Repo ID first. To optimize, ideally store/cache this, but here we fetch it.
     const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
     const repoId = repoData.id;
 
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
-    // Get all paths in this folder that have comments
     const paths = githubData.map(item => item.path);
     
     const { data: trackedFiles } = await supabase
         .from("files")
         .select(`
             path,
-            comments:comments(count)
+            comments:comments(count),
+            lock_events (
+                is_locked,
+                created_at,
+                user:users (username)
+            )
         `)
         .eq("repo_id", repoId)
-        .in("path", paths);
+        .in("path", paths)
+        .order("created_at", { foreignTable: "lock_events", ascending: false });
 
-    // 3. Merge Counts into GitHub Data
     const enrichedData = githubData.map((item) => {
         const dbFile = trackedFiles?.find(f => f.path === item.path);
-        // Supabase returns count like [{ count: 5 }] or just count depending on query format
-        // With select('comments(count)'), it returns comments: [ { count: N } ]
-        const commentCount = dbFile?.comments?.[0]?.count ?? 0;
+        
+        // Fix for array access on potentially undefined comments
+        const comments = dbFile?.comments as unknown as { count: number }[] | undefined;
+        const commentCount = comments?.[0]?.count ?? 0;
+
+        // Fix for array access on potentially undefined lock_events
+        const locks = dbFile?.lock_events as unknown as { is_locked: boolean, created_at: string, user: { username: string } }[] | undefined;
+        const latestLock = locks?.[0];
+        
+        const isLocked = latestLock?.is_locked ?? false;
+        const lockedBy = isLocked ? (latestLock?.user?.username ?? "Unknown") : undefined;
+        const lockedAt = isLocked ? latestLock?.created_at : undefined;
 
         return {
             ...item,
-            commentsCount: commentCount
+            commentsCount: commentCount,
+            lockedBy,
+            lockedAt
         };
     });
 
     return NextResponse.json(enrichedData);
 
-  } catch (err: any) {
-    console.error("Content API Error:", err.message);
+  } catch (err: unknown) {
+    console.error("Content API Error:", err);
     return NextResponse.json(
-      { error: err.message ?? "Unable to fetch repository contents" },
-      { status: err.status ?? 500 }
+      { error: (err as Error).message ?? "Unable to fetch repository contents" },
+      { status: 500 }
     );
   }
 }
