@@ -82,7 +82,7 @@ export async function POST(
     const { error: lockError } = await supabase
         .from("lock_events")
         .insert({
-            file_id: fileRow.file_id,
+            file_id: fileRow?.file_id,
             is_locked: isLockedTarget,
             github_id: user.github_id 
         });
