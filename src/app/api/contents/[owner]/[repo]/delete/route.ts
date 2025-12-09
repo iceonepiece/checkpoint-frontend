@@ -75,9 +75,9 @@ export async function DELETE(
                 });
 
                 deletedFiles.push(filePath);
-            } catch (error: any) {
+            } catch (error) {
                 console.error(`Failed to delete ${filePath}`, error);
-                failedFiles.push({ path: filePath, reason: error.message });
+                failedFiles.push({ path: filePath, reason: error });
             }
         }
 
@@ -87,8 +87,8 @@ export async function DELETE(
             failed: failedFiles
         });
 
-    } catch (err: any) {
+    } catch (err) {
         console.error("Delete API Error:", err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json({ error: err }, { status: 500 });
     }
 }

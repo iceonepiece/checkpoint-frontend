@@ -139,8 +139,8 @@ export async function PUT(
 
         return NextResponse.json({ success: true, status: statusInt });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Status Update Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error }, { status: 500 });
     }
 }

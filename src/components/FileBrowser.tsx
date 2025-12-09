@@ -102,7 +102,7 @@ export default function FileBrowser() {
       const data = await res.json();
       
       if (Array.isArray(data)) {
-        const mappedFiles: FileItem[] = data.map((item: any) => {
+        const mappedFiles: FileItem[] = data.map((item) => {
           const type = getFileType(item.name, item.type);
           return {
             id: item.path, 
