@@ -44,6 +44,9 @@ export default function AssetPage(props: Params) {
   const [infoLoading, setInfoLoading] = useState(true); 
   const [versionsLoading, setVersionsLoading] = useState(true); 
   
+  // Exit Animation State
+  const [isExiting, setIsExiting] = useState(false);
+
   const [error, setError] = useState("");
   const [compareMode, setCompareMode] = useState(false);
   const [targetVersionId, setTargetVersionId] = useState<string>("");
@@ -54,13 +57,23 @@ export default function AssetPage(props: Params) {
 
     async function loadData() {
         if (!currentRepo) return;
+
+        // 1. Transition Out (If we have old data)
+        if (asset) {
+            setIsExiting(true);
+            await new Promise(resolve => setTimeout(resolve, 300)); 
+            if (!isMounted) return;
+            setAsset(null); 
+            setIsExiting(false); 
+        }
+
         setMainLoading(true);
         setError("");
 
         const baseUrl = `/api/contents/${currentRepo.owner}/${currentRepo.name}`;
 
         try {
-            // 1. Metadata (Blocking)
+            // 2. Fetch Metadata (Blocking)
             const resMeta = await fetch(`${baseUrl}?path=${filePath}`);
             
             if (resMeta.status === 404) {
@@ -93,7 +106,7 @@ export default function AssetPage(props: Params) {
                 setVersionsLoading(true);
             }
 
-            // 2. Info (Background)
+            // 3. Info (Background)
             fetch(`${baseUrl}/info?path=${filePath}`)
                 .then(async (res) => {
                     if (res.ok) {
@@ -119,7 +132,7 @@ export default function AssetPage(props: Params) {
                 .catch(console.warn)
                 .finally(() => isMounted && setInfoLoading(false));
 
-            // 3. Versions (Background)
+            // 4. Versions (Background)
             fetch(`${baseUrl}/versions?path=${filePath}`)
                 .then(async (res) => {
                     if (res.ok) {
@@ -232,14 +245,35 @@ export default function AssetPage(props: Params) {
     if(asset) setAsset({ ...asset, lockedBy: asset.lockedBy ? undefined : "Me" });
   };
 
-  const handleDownload = () => {
+  // FIXED: Updated Download Handler to use Fetch/Blob
+  const handleDownload = async () => {
     if(!asset?.thumb) return;
-    const link = document.createElement("a");
-    link.href = asset.thumb;
-    link.download = asset.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    try {
+        // 1. Fetch file as blob (bypass browser opening it)
+        const response = await fetch(asset.thumb);
+        if (!response.ok) throw new Error("Network response was not ok");
+        
+        const blob = await response.blob();
+        
+        // 2. Create Object URL
+        const url = window.URL.createObjectURL(blob);
+        
+        // 3. Trigger Download
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = asset.name; // Use the correct filename
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // 4. Cleanup
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error("Download failed, falling back to new tab", err);
+        // Fallback if CORS fails
+        window.open(asset.thumb, '_blank');
+    }
   };
 
   if (!currentRepo) return <div className="p-10 text-gray-500">Loading repository context...</div>;
@@ -260,12 +294,14 @@ export default function AssetPage(props: Params) {
   const targetVersionObj = asset.versions.find(v => v.id === targetVersionId);
   const oldThumb = (targetVersionObj as any)?.thumb || "";
 
+  const animationClass = isExiting ? "animate-fade-out-left" : "animate-fade-in-right opacity-0";
+
   return (
     <section className="h-full w-full overflow-y-auto">
       <div className="space-y-6 px-6 py-6 max-w-screen-xl mx-auto">
         
         {/* Header - Delay: 0s */}
-        <Card className="p-4 shrink-0 opacity-0 animate-fade-in-left">
+        <Card className={`p-4 shrink-0 ${animationClass}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
                 <Button variant="ghost" size="icon" onClick={() => router.back()} title="Go Back">
@@ -340,8 +376,8 @@ export default function AssetPage(props: Params) {
                 
                 {/* Preview - Delay: 0.1s */}
                 <Card 
-                    className="p-3 bg-background flex flex-col justify-center opacity-0 animate-fade-in-left"
-                    style={{ animationDelay: "0.1s" }}
+                    className={`p-3 bg-background flex flex-col justify-center ${animationClass}`}
+                    style={{ animationDelay: isExiting ? "0s" : "0.1s" }}
                 >
                     {compareMode ? (
                         <DiffViewer 
@@ -357,8 +393,8 @@ export default function AssetPage(props: Params) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Metadata - Delay: 0.2s */}
                     <Card 
-                        className="p-3 opacity-0 animate-fade-in-left"
-                        style={{ animationDelay: "0.2s" }}
+                        className={`p-3 ${animationClass}`}
+                        style={{ animationDelay: isExiting ? "0s" : "0.2s" }}
                     >
                         <SectionTitle>Metadata</SectionTitle>
                         <div className="mt-2 divide-y divide-default">
@@ -371,8 +407,8 @@ export default function AssetPage(props: Params) {
 
                     {/* Versions - Delay: 0.3s */}
                     <Card 
-                        className="p-3 opacity-0 animate-fade-in-left"
-                        style={{ animationDelay: "0.3s" }}
+                        className={`p-3 ${animationClass}`}
+                        style={{ animationDelay: isExiting ? "0s" : "0.3s" }}
                     >
                         <SectionTitle>Versions</SectionTitle>
                         <ul className="mt-2 space-y-2 max-h-60 overflow-y-auto">
@@ -412,8 +448,8 @@ export default function AssetPage(props: Params) {
 
             {/* Review Panel - Delay: 0.4s */}
             <div 
-                className="opacity-0 animate-fade-in-left"
-                style={{ animationDelay: "0.4s" }}
+                className={animationClass}
+                style={{ animationDelay: isExiting ? "0s" : "0.4s" }}
             >
                 <ReviewPanel 
                     isLoading={infoLoading}
