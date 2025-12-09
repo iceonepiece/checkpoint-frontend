@@ -26,31 +26,58 @@
     to { opacity: 1; transform: translateX(0); }
   }
 
-  /* NEW: Exit Animation */
   @keyframes fadeOutLeft {
     from { opacity: 1; transform: translateX(0); }
     to { opacity: 0; transform: translateX(-15px); }
   }
 
+  /* --- NEW: Modal Animations --- */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes zoomIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes zoomOut {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.5); }
+  }
+
   .animate-fade-in-up {
     animation: fadeInUp 0.4s ease-out forwards;
   }
-
   .animate-fade-in-left {
     animation: fadeInLeft 0.4s ease-out forwards;
   }
-
   .animate-fade-in-right {
     animation: fadeInRight 0.4s ease-out forwards;
   }
-
-  /* NEW: Class for exiting */
   .animate-fade-out-left {
     animation: fadeOutLeft 0.3s ease-in forwards;
   }
+
+  /* New Classes */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+  }
+  .animate-fade-out {
+    animation: fadeOut 0.2s ease-in forwards;
+  }
+  .animate-zoom-in {
+    animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-zoom-out {
+    animation: zoomOut 0.2s ease-in forwards;
+  }
 }
 
-/* ... rest of your CSS ... */
+/* ... rest of your CSS (unchanged) ... */
 :root {
   --background: #0d1117;
   --foreground: #30363d;

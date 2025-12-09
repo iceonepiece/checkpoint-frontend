@@ -70,11 +70,12 @@ export default function TopNav({ user }: { user: AuthUser }) {
   const isOwner = currentRepo ? currentRepo.owner === user.username : false;
 
   const tabs = [
-    { label: "Overview", href: "/overview" },
+    { label: "View on GitHub", href: `${repoBaseUrl}`, external: true },
+    // { label: "Overview", href: "/overview" },
     { label: "Repository", href: "/" },
+    // { label: "View on GitHub", href: `${repoBaseUrl}`, external: true },
     { label: "Issues", href: `${repoBaseUrl}/issues`, external: true },
     { label: "Pull requests", href: `${repoBaseUrl}/pulls`, external: true },
-    // FIXED: Added 'disabled' property logic based on ownership
     { label: "Settings", href: `${repoBaseUrl}/settings`, external: true, disabled: !isOwner },
   ];
 

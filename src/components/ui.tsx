@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "@/components/Icon";
 
 // --- Card Component ---
 export function Card({ className = "", ...props }: React.HTMLAttributes<HTMLDivElement>) {
@@ -9,12 +10,16 @@ export function Card({ className = "", ...props }: React.HTMLAttributes<HTMLDivE
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "primary" | "danger" | "ghost";
   size?: "sm" | "md" | "icon";
+  loading?: boolean; // NEW PROP
 }
 
 export function Button({ 
   className = "", 
   variant = "default", 
   size = "md", 
+  loading = false,
+  children,
+  disabled,
   ...props 
 }: ButtonProps) {
   
@@ -33,9 +38,17 @@ export function Button({
 
   return (
     <button 
-      className={`btn ${variantClass} ${sizeClass} ${className}`} 
+      className={`btn ${variantClass} ${sizeClass} ${className} ${loading ? 'cursor-not-allowed opacity-70' : ''}`} 
+      disabled={disabled || loading}
       {...props} 
-    />
+    >
+      {loading && (
+        <Icon className="size-3.5 animate-spin mr-1.5">
+          <path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10 10 0 0 0 10-10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 60" />
+        </Icon>
+      )}
+      {children}
+    </button>
   );
 }
 
@@ -53,7 +66,7 @@ export function KeyRow({ k, v }: { k: string; v: React.ReactNode }) {
   );
 }
 
-// --- NEW: Reusable Loading Spinner ---
+// --- Reusable Loading Spinner ---
 export function LoadingSpinner({ text = "Loading..." }: { text?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-10 text-gray-500 gap-3">
