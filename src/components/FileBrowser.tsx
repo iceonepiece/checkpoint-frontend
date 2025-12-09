@@ -9,6 +9,7 @@ import { type FileItem } from "@/lib/mockFiles";
 import { MOCK_TREE, type TreeNode } from "@/lib/mockFolderTree";
 import { useRepo } from "@/lib/RepoContext";
 
+// ... imports (AssetCard, FolderCard, Modals, etc) ...
 import { AssetCard } from "./file-browser/AssetCard";
 import { AssetRow } from "./file-browser/AssetRow";
 import { FolderCard } from "./file-browser/FolderCard";
@@ -17,48 +18,50 @@ import { UploadModal } from "./file-browser/modals/UploadModal";
 import { DeleteModal } from "./file-browser/modals/DeleteModal";
 import { MoveModal } from "./file-browser/modals/MoveModal";
 
+
 type ViewMode = "grid" | "list";
 
-// --- UTILITIES ---
+// ... (Keep existing Utilities: getFileType, findNode, getBreadcrumbs) ...
 function getFileType(fileName: string, type: string) {
-  if (type === "dir") return "folder";
-  const ext = fileName.split('.').pop()?.toLowerCase();
-  if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) return "image/" + ext;
-  if (['mp4', 'mov', 'avi', 'webm'].includes(ext || '')) return "video/" + ext;
-  if (['pdf'].includes(ext || '')) return "application/pdf";
-  if (['fbx', 'obj', 'blend', 'glb', 'gltf'].includes(ext || '')) return "model/" + ext;
-  return "file";
+    if (type === "dir") return "folder";
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) return "image/" + ext;
+    if (['mp4', 'mov', 'avi', 'webm'].includes(ext || '')) return "video/" + ext;
+    if (['pdf'].includes(ext || '')) return "application/pdf";
+    if (['fbx', 'obj', 'blend', 'glb', 'gltf'].includes(ext || '')) return "model/" + ext;
+    return "file";
 }
-
+  
 function findNode(nodes: TreeNode[], id: string): TreeNode | undefined {
-  for (const node of nodes) {
-    if (node.id === id) return node;
-    if (node.children) {
-      const found = findNode(node.children, id);
-      if (found) return found;
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNode(node.children, id);
+        if (found) return found;
+      }
     }
-  }
-  return undefined;
+    return undefined;
 }
-
+  
 function getBreadcrumbs(pathStr: string, tree: TreeNode[]) {
-  const rootCrumb = { label: "Root", href: "/" };
-  if (!pathStr) return [{ label: "Root" }];
-  const ids = pathStr.split("/");
-  const pathCrumbs = ids.map((id, index) => {
-    const node = findNode(tree, id);
-    const label = node ? node.name : id;
-    const hrefPath = ids.slice(0, index + 1).join("/");
-    return { label, href: `/?path=${hrefPath}` };
-  });
-  return [rootCrumb, ...pathCrumbs];
+    const rootCrumb = { label: "Root", href: "/" };
+    if (!pathStr) return [{ label: "Root" }];
+    const ids = pathStr.split("/");
+    const pathCrumbs = ids.map((id, index) => {
+      const node = findNode(tree, id);
+      const label = node ? node.name : id;
+      const hrefPath = ids.slice(0, index + 1).join("/");
+      return { label, href: `/?path=${hrefPath}` };
+    });
+    return [rootCrumb, ...pathCrumbs];
 }
 
-/* ---------- MAIN COMPONENT ---------- */
 export default function FileBrowser() {
   const router = useRouter(); 
   const [view, setView] = useState<ViewMode>("grid");
-  const { currentRepo } = useRepo();
+  
+  // NEW: Get user from context
+  const { currentRepo, user } = useRepo();
 
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,14 +72,13 @@ export default function FileBrowser() {
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [isMoveOpen, setMoveOpen] = useState(false);
   
-  // Loading States
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isLocking, setIsLocking] = useState(false); // NEW STATE
+  const [isLocking, setIsLocking] = useState(false);
   
   const searchParams = useSearchParams();
   const currentPath = searchParams.get("path") || "";
 
-  // 1. Fetch Files
+  // 1. Fetch Files (No changes here)
   const fetchFiles = useCallback(async () => {
     if (!currentRepo) return;
 
@@ -102,7 +104,7 @@ export default function FileBrowser() {
       const data = await res.json();
       
       if (Array.isArray(data)) {
-        const mappedFiles: FileItem[] = data.map((item) => {
+        const mappedFiles: FileItem[] = data.map((item: any) => {
           const type = getFileType(item.name, item.type);
           return {
             id: item.path, 
@@ -141,22 +143,46 @@ export default function FileBrowser() {
   const toggleOne = (id: string) => setSelected((s) => ({ ...s, [id]: !s[id] }));
   const clearSelection = () => setSelected({});
 
+  // --- PERMISSION HELPERS ---
+
+  const isRepoOwner = currentRepo?.owner === user?.username;
+
+  // Check if I can modify this specific file (Edit/Delete/Upload Over)
+  const canModifyFile = (file: FileItem) => {
+    if (!file.lockedBy) return true; // Not locked = Free for all
+    return file.lockedBy === user?.username; // Must be locked by me
+  };
+
+  // Check if I can unlock this specific file
+  const canUnlockFile = (file: FileItem) => {
+      if (!file.lockedBy) return true; // Can lock
+      // Can unlock if: I locked it OR I am the owner
+      return file.lockedBy === user?.username || isRepoOwner;
+  };
+
   // --- HANDLERS ---
 
   const handleLock = async () => {
-    if (!currentRepo) return;
+    if (!currentRepo || !user) return;
     
-    // 1. Start Loading
     setIsLocking(true);
 
     const selectedIds = Object.keys(selected).filter(k => selected[k]);
-    const itemsToLock = files.filter(item => selectedIds.includes(item.id));
-    const validItems = itemsToLock.filter(i => !i.isFolder);
+    const itemsToProcess = files.filter(item => selectedIds.includes(item.id));
+    const validItems = itemsToProcess.filter(i => !i.isFolder);
 
     try {
         if (validItems.length === 0) return;
 
         for (const item of validItems) {
+            // PERMISSION CHECK: Can I toggle this lock?
+            // 1. If Locked: Can I unlock? (Me or Owner)
+            // 2. If Unlocked: Can I lock? (Yes, anyone)
+            if (item.lockedBy && !canUnlockFile(item)) {
+                console.warn(`Skipping ${item.name}: Locked by ${item.lockedBy}`);
+                continue; // Skip without erroring whole batch
+            }
+
             try {
                 const shouldLock = !item.lockedBy;
                 const filePath = item.path || item.name;
@@ -168,24 +194,31 @@ export default function FileBrowser() {
             }
         }
         
-        await fetchFiles(); // Wait for refresh
+        await fetchFiles();
         clearSelection();
     } finally {
-        // 2. Stop Loading
         setIsLocking(false);
     }
   };
 
-  const handleUpload = async (files: File[], message: string, description: string) => {
-    if (!currentRepo) return;
+  const handleUpload = async (filesToUpload: File[], message: string, description: string) => {
+    if (!currentRepo || !user) return;
+
+    // PERMISSION CHECK: Check for overwrites on locked files
+    const blockedFiles = filesToUpload.filter(newFile => {
+        const existing = files.find(f => f.name === newFile.name);
+        if (!existing) return false; // New file, allowed
+        return !canModifyFile(existing); // Existing file, check lock
+    });
+
+    if (blockedFiles.length > 0) {
+        const names = blockedFiles.map(f => f.name).join(", ");
+        alert(`Cannot upload: The following files are locked by other users: ${names}`);
+        return;
+    }
 
     const formData = new FormData();
-    
-    // Append all selected files to the form data
-    files.forEach(file => {
-        formData.append("files", file);
-    });
-    
+    filesToUpload.forEach(file => formData.append("files", file));
     formData.append("message", message);
     if (description) formData.append("description", description);
 
@@ -204,61 +237,60 @@ export default function FileBrowser() {
     }
   };
 
-  const handleDownload = async () => {
-    if (!currentRepo) return;
-
-    setIsDownloading(true);
-
-    const selectedIds = Object.keys(selected).filter(k => selected[k]);
-    const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
-    const validItems = itemsToDownload.filter(i => !i.isFolder);
-
-    try {
-        if (validItems.length === 0) return;
-
-        for (const item of validItems) {
-            try {
-                const fileName = item.name;
-                const filePath = item.path || fileName;
-                
-                const downloadUrl = `/api/download?owner=${currentRepo.owner}&repo=${currentRepo.name}&path=${encodeURIComponent(filePath)}`;
-
-                const response = await fetch(downloadUrl);
-                
-                if (!response.ok) throw new Error("Download failed via proxy");
-                
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-                
-            } catch (err) {
-                console.error(`Failed to download ${item.name}`, err);
-                if (item.thumb) window.open(item.thumb, '_blank');
-            }
-        }
-        clearSelection();
-    } finally {
-        setIsDownloading(false);
-    }
-  };
-
   const handleDelete = async (message: string) => {
-    console.log(`Deleting with message: ${message}`);
+    if(!user) return;
+
+    // PERMISSION CHECK
+    const selectedIds = Object.keys(selected).filter(k => selected[k]);
+    const itemsToDelete = files.filter(item => selectedIds.includes(item.id));
+    
+    const lockedByOthers = itemsToDelete.filter(item => !canModifyFile(item));
+
+    if (lockedByOthers.length > 0) {
+        const names = lockedByOthers.map(i => i.name).join(", ");
+        alert(`Cannot delete: The following files are locked by other users: ${names}`);
+        // Optional: Close modal or just return to let user deselect
+        return; 
+    }
+
+    alert(`Simulating deletion of ${itemsToDelete.length} items. (API implementation pending)`);
     setDeleteOpen(false);
     clearSelection();
   };
-  
-  const handleMove = async (targetId: string, message: string) => {
-    console.log(`Moving to ${targetId} with message: ${message}`);
-    setMoveOpen(false);
-    clearSelection();
+
+  // ... (handleDownload, handleMove remain same) ...
+  const handleDownload = async () => {
+      // ... (existing download logic) ...
+      // Just copy paste logic from previous message if needed, omitting for brevity
+      if (!currentRepo) return;
+      setIsDownloading(true);
+      const selectedIds = Object.keys(selected).filter(k => selected[k]);
+      const itemsToDownload = files.filter(item => selectedIds.includes(item.id));
+      const validItems = itemsToDownload.filter(i => !i.isFolder);
+      try {
+          if (validItems.length === 0) return;
+          for (const item of validItems) {
+              try {
+                  const fileName = item.name;
+                  const filePath = item.path || fileName;
+                  const downloadUrl = `/api/download?owner=${currentRepo.owner}&repo=${currentRepo.name}&path=${encodeURIComponent(filePath)}`;
+                  const response = await fetch(downloadUrl);
+                  if (!response.ok) throw new Error("Download failed via proxy");
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.href = url;
+                  link.download = fileName;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  window.URL.revokeObjectURL(url);
+              } catch (err) { console.error(err); if(item.thumb) window.open(item.thumb, '_blank'); }
+          }
+          clearSelection();
+      } finally { setIsDownloading(false); }
   };
+  const handleMove = async (targetId: string, message: string) => { setMoveOpen(false); clearSelection(); };
 
   if (!currentRepo) {
       return (
@@ -270,9 +302,7 @@ export default function FileBrowser() {
       );
   }
 
-  const getDelayStyle = (index: number) => ({
-    animationDelay: `${index * 0.05}s`
-  });
+  const getDelayStyle = (index: number) => ({ animationDelay: `${index * 0.05}s` });
 
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0 overflow-y-auto">
@@ -303,7 +333,7 @@ export default function FileBrowser() {
         onMove={() => setMoveOpen(true)}
         onDownload={handleDownload}
         isDownloading={isDownloading} 
-        isLocking={isLocking} // PASS PROP
+        isLocking={isLocking}
         clear={clearSelection} 
       />
 
@@ -320,10 +350,7 @@ export default function FileBrowser() {
               <p>This folder is empty</p>
           </div>
       ) : view === "grid" ? (
-        <div 
-            key={currentPath}
-            className="space-y-6 pb-20"
-        >
+        <div key={currentPath} className="space-y-6 pb-20">
           {subFolders.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Folders</h3>
@@ -351,10 +378,7 @@ export default function FileBrowser() {
           )}
         </div>
       ) : (
-        <Card 
-            key={currentPath}
-            className="flex flex-col"
-        >
+        <Card key={currentPath} className="flex flex-col">
           <div className="grid grid-cols-[auto_minmax(0,1fr)_140px_120px_100px_40px] gap-3 px-4 py-3 border-b border-default text-xs font-semibold text-gray-400 uppercase tracking-wider">
              <span className="w-4" />
              <span>Name</span>

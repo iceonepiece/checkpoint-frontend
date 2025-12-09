@@ -69,7 +69,8 @@ export default function AssetPage(props: Params) {
     props.params.then(setResolvedParams);
   }, [props.params]);
 
-  const { currentRepo } = useRepo();
+  // NEW: Get user
+  const { currentRepo, user } = useRepo();
 
   const filePath = resolvedParams ? decodeURIComponent(resolvedParams.id) : "";
   
@@ -81,7 +82,6 @@ export default function AssetPage(props: Params) {
   const [versionsLoading, setVersionsLoading] = useState(true); 
   const [isDownloading, setIsDownloading] = useState(false); 
   
-  // NEW: Lock Loading State
   const [isLocking, setIsLocking] = useState(false);
   
   const [isExiting, setIsExiting] = useState(false);
@@ -162,7 +162,6 @@ export default function AssetPage(props: Params) {
                             date: new Date(c.created_at).toLocaleDateString()
                         })) || [];
 
-                        // UPDATED: Parse lock info
                         const locks = data.lock_events as ApiLockEvent[] | undefined;
                         const latestLock = locks?.[0];
                         const isLocked = latestLock?.is_locked ?? false;
@@ -172,7 +171,7 @@ export default function AssetPage(props: Params) {
                             ...prev, 
                             status: statusStr, 
                             comments: dbComments,
-                            lockedBy: lockedBy // Set lock state
+                            lockedBy: lockedBy 
                         } : null);
                     }
                 })
@@ -222,11 +221,25 @@ export default function AssetPage(props: Params) {
 
     loadData();
     return () => { isMounted = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRepo, filePath, resolvedParams]);
+
+  // --- PERMISSION CHECKS ---
+  const isRepoOwner = currentRepo?.owner === user?.username;
+  const isLockedByMe = asset?.lockedBy === user?.username;
+  const isLockedByOther = !!asset?.lockedBy && !isLockedByMe;
+
+  const canModify = !asset?.lockedBy || isLockedByMe; // Edit status, upload new
+  const canUnlock = isLockedByMe || isRepoOwner || !asset?.lockedBy; // Unlock
 
   const handleStatusChange = async (newStatus: "Needs changes" | "Pending" | "Approved") => {
       if(!asset || !currentRepo) return;
+      
+      // PERMISSION CHECK
+      if (!canModify) {
+          alert(`Cannot change status: File is locked by ${asset.lockedBy}`);
+          return;
+      }
+
       setAsset({ ...asset, status: newStatus }); 
 
       try {
@@ -249,6 +262,9 @@ export default function AssetPage(props: Params) {
 
   const handleAddComment = async (text: string) => {
       if(!asset || !currentRepo) return;
+
+      // Note: Comments are generally allowed even on locked files in many systems
+      // unless specified otherwise. Assuming allowed.
 
       let currentFileId = fileId;
       if (!currentFileId) {
@@ -290,9 +306,14 @@ export default function AssetPage(props: Params) {
       }
   };
 
-  // UPDATED: Handle Lock Logic
   const handleLock = async () => {
     if(!asset || !currentRepo) return;
+    
+    // PERMISSION CHECK
+    if (asset.lockedBy && !canUnlock) {
+        return; // UI should disable this, but safety check here
+    }
+
     setIsLocking(true);
 
     try {
@@ -307,7 +328,6 @@ export default function AssetPage(props: Params) {
         if (resInfo.ok) {
              const data = await resInfo.json();
              
-             // Extract latest lock state
              const locks = data.lock_events as ApiLockEvent[] | undefined;
              const latestLock = locks?.[0];
              const isLocked = latestLock?.is_locked ?? false;
@@ -322,6 +342,7 @@ export default function AssetPage(props: Params) {
     }
   };
 
+  // ... (handleDownload remains same) ...
   const handleDownload = async () => {
     if(!asset?.thumb || !currentRepo) return;
     setIsDownloading(true);
@@ -329,7 +350,6 @@ export default function AssetPage(props: Params) {
         const downloadUrl = `/api/download?owner=${currentRepo.owner}&repo=${currentRepo.name}&path=${encodeURIComponent(filePath)}`;
         const response = await fetch(downloadUrl);
         if (!response.ok) throw new Error("Download failed");
-        
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -365,6 +385,18 @@ export default function AssetPage(props: Params) {
   const oldThumb = targetVersionObj?.thumb || "";
   const animationClass = isExiting ? "animate-fade-out-left" : "animate-fade-in-right opacity-0";
   const isBusy = isDownloading || isLocking;
+
+  // Determine Lock Button Label
+  let lockLabel = "Lock";
+  if (isLocking) {
+      lockLabel = "Updating...";
+  } else if (asset.lockedBy) {
+      if (canUnlock) {
+          lockLabel = "Unlock";
+      } else {
+          lockLabel = `Locked by ${asset.lockedBy}`;
+      }
+  }
 
   return (
     <section className="h-full w-full overflow-y-auto">
@@ -402,9 +434,15 @@ export default function AssetPage(props: Params) {
                     {isDownloading ? "Downloading..." : "Download"}
                 </Button>
                 
-                {/* UPDATED: Lock Button with Loading State */}
-                <Button size="sm" onClick={handleLock} loading={isLocking} disabled={isBusy}>
-                    {isLocking ? "Updating..." : (asset.lockedBy ? "Unlock" : "Lock")}
+                {/* UPDATED LOCK BUTTON */}
+                <Button 
+                    size="sm" 
+                    onClick={handleLock} 
+                    loading={isLocking} 
+                    disabled={isBusy || (!!asset.lockedBy && !canUnlock)}
+                    title={isLockedByOther && !isRepoOwner ? "Only the locker or repo owner can unlock this file" : ""}
+                >
+                    {lockLabel}
                 </Button>
                 
                 <Button 
@@ -420,6 +458,7 @@ export default function AssetPage(props: Params) {
             
             {compareMode && (
                 <div className="mt-4 pt-4 border-t border-default flex items-center gap-4 animate-in slide-in-from-top-2">
+                    {/* ... (Compare dropdowns) ... */}
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-red-400 font-medium">Base:</span>
                         <select 
@@ -432,13 +471,7 @@ export default function AssetPage(props: Params) {
                             ))}
                         </select>
                     </div>
-                    <div className="text-gray-500">vs</div>
-                    <div className="flex items-center gap-2 text-sm">
-                        <span className="text-green-400 font-medium">Head:</span>
-                        <span className="bg-background border border-default rounded px-2 py-1 text-gray-400 cursor-not-allowed">
-                            Current
-                        </span>
-                    </div>
+                    {/* ... */}
                 </div>
             )}
         </Card>
@@ -461,8 +494,10 @@ export default function AssetPage(props: Params) {
                     )}
                 </Card>
 
+                {/* Metadata & Versions Cards ... */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card 
+                    {/* ... Metadata Card ... */}
+                     <Card 
                         className={`p-3 ${animationClass}`}
                         style={{ animationDelay: isExiting ? "0s" : "0.2s" }}
                     >
@@ -475,7 +510,8 @@ export default function AssetPage(props: Params) {
                         </div>
                     </Card>
 
-                    <Card 
+                    {/* ... Versions Card ... */}
+                     <Card 
                         className={`p-3 ${animationClass}`}
                         style={{ animationDelay: isExiting ? "0s" : "0.3s" }}
                     >
@@ -496,7 +532,7 @@ export default function AssetPage(props: Params) {
                                     <div className="flex flex-col min-w-0">
                                         <span className="font-medium truncate" title={v.label}>{v.label}</span>
                                         <span className="text-xs text-gray-500">
-                                            {new Date(v.date).toLocaleDateString()} • {v.id?.substring(0,7) ?? "—"} • {v.author ?? "Unknown"}
+                                            {new Date(v.date).toLocaleDateString()} • {v.id?.substring(0,7) ?? "—"} • {(v as any).author ?? "Unknown"}
                                         </span>
                                     </div>
                                     {!compareMode && asset.versions.indexOf(v) > 0 && (
@@ -519,13 +555,22 @@ export default function AssetPage(props: Params) {
                 className={animationClass}
                 style={{ animationDelay: isExiting ? "0s" : "0.4s" }}
             >
-                <ReviewPanel 
-                    isLoading={infoLoading}
-                    status={asset.status} 
-                    onStatusChange={handleStatusChange}
-                    comments={asset.comments}
-                    onAddComment={handleAddComment}
-                />
+                {/* UPDATED: Pass isReadOnly based on lock status */}
+                <div className={!canModify ? "opacity-70 pointer-events-none grayscale-[0.5]" : ""}>
+                    <ReviewPanel 
+                        isLoading={infoLoading}
+                        status={asset.status} 
+                        onStatusChange={handleStatusChange}
+                        comments={asset.comments}
+                        onAddComment={handleAddComment}
+                    />
+                </div>
+                {!canModify && (
+                    <div className="mt-2 p-2 bg-red-900/20 border border-red-500/30 rounded text-center text-xs text-red-400">
+                        <Icon className="size-3 inline mr-1 -mt-0.5"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></Icon>
+                        This file is locked by <strong>{asset.lockedBy}</strong>. You cannot modify it.
+                    </div>
+                )}
             </div>
         </div>
       </div>

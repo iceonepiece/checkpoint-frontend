@@ -1,5 +1,5 @@
 import TopNav from "@/components/TopNav";
-import AppLayout from "@/components/AppLayout"; // Import the wrapper
+import AppLayout from "@/components/AppLayout"; 
 import { authenticate } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { RepoProvider } from "@/lib/RepoContext";
@@ -17,11 +17,11 @@ export default async function MainLayout({
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <RepoProvider>
+      {/* Pass the user to the provider */}
+      <RepoProvider user={auth.user}>
         <TopNav user={auth.user} />
         
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden w-full">
-          {/* UPDATED: Wrap children in AppLayout to manage Sidebar persistence */}
           <AppLayout>
             {children}
           </AppLayout>
