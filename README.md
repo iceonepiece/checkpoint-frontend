@@ -83,3 +83,16 @@ View asset previews directly in the browser and compare versions side-by-side.
 Perfect for checking visual changes, file updates, and improvements across commits.
 
 ## Screenshots 
+![image alt](https://github.com/iceonepiece/checkpoint-frontend/blob/098297209353ef33c3c2022f0170119fce629570/public/samples/1.png)
+![image alt](https://github.com/iceonepiece/checkpoint-frontend/blob/098297209353ef33c3c2022f0170119fce629570/public/samples/2.png)
+![image alt](https://github.com/iceonepiece/checkpoint-frontend/blob/098297209353ef33c3c2022f0170119fce629570/public/samples/3.png)
+![image alt](https://github.com/iceonepiece/checkpoint-frontend/blob/098297209353ef33c3c2022f0170119fce629570/public/samples/4.png)
+
+## Video Demostration 
+[Google Drive](https://drive.google.com/drive/folders/1-LDTARu7B4La_nXgjyPTqknfPn86p0KC?usp=sharing)
+
+## Team Members
+```bash
+1. Vibhumi Sermsilp  65360501810 
+2. Jarusrawee Deekhuankhun  65360501812 
+```
