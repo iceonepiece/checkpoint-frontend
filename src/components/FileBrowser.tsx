@@ -176,11 +176,16 @@ export default function FileBrowser() {
     }
   };
 
-  const handleUpload = async (file: File, message: string, description: string) => {
+  const handleUpload = async (files: File[], message: string, description: string) => {
     if (!currentRepo) return;
 
     const formData = new FormData();
-    formData.append("file", file);
+    
+    // Append all selected files to the form data
+    files.forEach(file => {
+        formData.append("files", file);
+    });
+    
     formData.append("message", message);
     if (description) formData.append("description", description);
 
@@ -195,7 +200,7 @@ export default function FileBrowser() {
         fetchFiles();
     } catch (err) {
         console.error("Upload error:", err);
-        alert("Failed to upload file");
+        alert("Failed to upload files");
     }
   };
 
