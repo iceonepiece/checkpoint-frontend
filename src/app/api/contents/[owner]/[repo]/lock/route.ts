@@ -65,10 +65,14 @@ export async function POST(
         .maybeSingle();
 
     if (!fileRow) {
+    {
         const { data: newFile, error: createError } = await supabase
             .from("files")
-            .insert({ repo_id: repoId, path })
-            .select("file_id")
+            .upsert(
+              { repo_id: repoId, path },
+              { onConflict: "repo_id,path" }
+            )
+            .select()
             .single();
         
         if (createError) throw createError;
