@@ -66,7 +66,7 @@ function getFileType(fileName: string) {
 
 // Helper for consistent date formatting
 function formatDate(dateStr: string) {
-  if (!dateStr) return "Unknown date";
+  if (!dateStr) return "Just now";
   return new Date(dateStr).toLocaleString(undefined, { 
     year: 'numeric', 
     month: 'short', 
@@ -174,7 +174,7 @@ export default function AssetPage(props: Params) {
 
                         const dbComments = data.comments?.map((c: ApiComment) => ({
                             id: c.comment_id,
-                            user: c.user?.username || "User", 
+                            user: c.user?.username || "Unknown", // Handle null user
                             avatarUrl: c.user?.avatar_url,
                             text: c.message,
                             date: formatDate(c.created_at)
@@ -285,6 +285,7 @@ export default function AssetPage(props: Params) {
   const handleAddComment = async (text: string) => {
       if(!asset || !currentRepo) return;
       let currentFileId = fileId;
+
       if (!currentFileId) {
           try {
               const resCreate = await fetch(`/api/contents/${currentRepo.owner}/${currentRepo.name}/info`, {
@@ -311,7 +312,8 @@ export default function AssetPage(props: Params) {
             const { comment } = await res.json();
             const newComment = { 
                 id: comment.comment_id, 
-                user: "Me", 
+                user: user?.username || "Unknown", 
+                avatarUrl: user?.avatar_url,
                 text: comment.message, 
                 date: formatDate(comment.created_at) 
             };
@@ -414,7 +416,6 @@ export default function AssetPage(props: Params) {
                     <span className="text-gray-300">{filePath}</span>
                     <span className="mx-1 text-gray-600">•</span>
                     
-                    {/* CHANGED: Use formatted Date & Time */}
                     {formatDate(asset.modifiedAt)}
                     
                     {asset.lockedBy && (
@@ -489,7 +490,6 @@ export default function AssetPage(props: Params) {
                         <div className="mt-2 divide-y divide-default">
                             <KeyRow k="Type" v={asset.type} />
                             <KeyRow k="Size" v={`${(asset.sizeBytes / 1024).toFixed(1)} KB`} />
-                            {/* CHANGED: Use formatted Date & Time */}
                             <KeyRow k="Modified" v={formatDate(asset.modifiedAt)} />
                             <KeyRow k="Status" v={asset.status} />
                         </div>
@@ -513,7 +513,6 @@ export default function AssetPage(props: Params) {
                                     <div className="flex flex-col min-w-0">
                                         <span className="font-medium truncate" title={v.label}>{v.label}</span>
                                         <span className="text-xs text-gray-500">
-                                            {/* CHANGED: Use formatted Date & Time + Author Name */}
                                             {formatDate(v.date)} • {v.id?.substring(0,7) ?? "—"} • {v.author ?? "Unknown"}
                                         </span>
                                     </div>
