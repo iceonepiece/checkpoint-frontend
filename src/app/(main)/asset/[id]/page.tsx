@@ -151,7 +151,8 @@ export default function AssetPage(props: Params) {
                 versions: [],
                 status: "Pending", 
                 comments: [],      
-                lockedBy: undefined 
+                lockedBy: undefined,
+                content: metaData.content
             };
 
             if (isMounted) {
@@ -523,7 +524,7 @@ export default function AssetPage(props: Params) {
                             type={asset.type} 
                         />
                     ) : (
-                        <AssetPreview src={asset.thumb} type={asset.type} alt={asset.name} />
+                        <AssetPreview repo={currentRepo} src={asset.thumb} type={asset.type} alt={asset.name} content={asset.content} />
                     )}
                 </Card>
 

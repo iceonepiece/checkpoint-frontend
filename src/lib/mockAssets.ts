@@ -27,6 +27,7 @@ export type Asset = {
   status: "Needs changes" | "Pending" | "Approved";
   lockedBy?: string;
   comments: Comment[];
+  content?: string;
 };
 
 export const MOCK_ASSETS: Record<string, Asset> = {

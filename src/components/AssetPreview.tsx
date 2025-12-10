@@ -1,12 +1,41 @@
 "use client";
 
 import React from "react";
+import ThreeModelViewer from "@/components/ThreeModelViewer"
+import { useState, useEffect } from "react";
+import { Repo } from "@/lib/RepoContext"
 
-type Props = { src?: string; type: string; alt?: string };
 
-export default function AssetPreview({ src, type, alt }: Props) {
+type Props = { src?: string; type: string; alt?: string; content?: string; repo?: Repo };
+
+export function githubContentToUrl(base64: string, mime = "text/plain") {
+  const decoded = atob(base64);
+  const bytes = new Uint8Array(decoded.length);
+
+  for (let i = 0; i < decoded.length; i++) {
+    bytes[i] = decoded.charCodeAt(i);
+  }
+
+  const blob = new Blob([bytes], { type: mime });
+  return URL.createObjectURL(blob); // <---- usable URL
+}
+
+
+export default function AssetPreview({ src, type, alt, content = "", repo }: Props) {
   const isImg = type.startsWith("image/");
   const isVideo = type.startsWith("video/");
+  const isModel = type.startsWith("model/");
+  const ext = type.split("/")[1]; 
+  const [modelUrl, setModelUrl] = useState("");
+
+  useEffect(() => {
+    function load() {
+      const url: string = githubContentToUrl(content);
+      setModelUrl(url); // <--- update state
+    }
+    load();
+  }, []);
+  
   
   return (
     // UPDATED: 
@@ -27,6 +56,15 @@ export default function AssetPreview({ src, type, alt }: Props) {
         />
       ) : isVideo ? (
         <video src={src} controls className="max-w-full max-h-[70vh] w-full" />
+      ) : isModel ? (
+              <ThreeModelViewer
+                url={modelUrl}
+                ext={ext.toLocaleLowerCase()}
+                onThumbnail={(png) => {
+                  //console.log("Generated thumbnail:", png);
+                  //setThumb(png);
+                }}
+              />
       ) : (
         <div className="flex flex-col items-center gap-2 text-gray-500">
             <div className="size-12 rounded-full bg-white/5 flex items-center justify-center">
